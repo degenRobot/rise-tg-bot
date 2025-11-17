@@ -61,9 +61,36 @@ async function main() {
     const telegramId = ctx.from.id.toString();
     const linkUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}?telegram_id=${telegramId}`;
     
+    console.log(`/link command from user:`, {
+      telegramId,
+      username: ctx.from.username,
+      firstName: ctx.from.first_name
+    });
+    
     await ctx.reply(
       `To link your wallet, please visit:\n\n${linkUrl}\n\n` +
-      "Sign in with your wallet and grant permissions for the bot to act on your behalf."
+      "Sign in with your wallet and grant permissions for the bot to act on your behalf.\n\n" +
+      `Debug: Your Telegram ID is ${telegramId}`
+    );
+  });
+
+  // Add debug command to show user info
+  bot.command("debug", async (ctx) => {
+    const telegramId = ctx.from.id.toString();
+    
+    console.log(`/debug command from user:`, {
+      telegramId,
+      username: ctx.from.username,
+      firstName: ctx.from.first_name
+    });
+    
+    await ctx.reply(
+      `🔍 Debug Info:\n\n` +
+      `Your Telegram ID: \`${telegramId}\`\n` +
+      `Username: @${ctx.from.username || 'not set'}\n` +
+      `First Name: ${ctx.from.first_name || 'not set'}\n\n` +
+      `If you've linked your wallet, the bot should find your account with this ID.`,
+      { parse_mode: "Markdown" }
     );
   });
 
@@ -71,17 +98,29 @@ async function main() {
     const userText = ctx.message.text;
     const telegramId = ctx.from.id.toString();
 
+    console.log(`Message from user ${telegramId} (@${ctx.from.username}): "${userText}"`); 
+
     // Check if user has linked their wallet
     try {
+      console.log(`Looking up user data for Telegram ID: ${telegramId}`);
       const response = await fetch(`http://localhost:${process.env.PORT || 8008}/api/users/by-telegram/${telegramId}`);
+      
       if (!response.ok) {
+        console.log(`User lookup failed with status ${response.status}`);
         await ctx.reply(
-          "Please link your wallet first using /link command."
+          `Please link your wallet first using /link command.\n\n` +
+          `Debug: Your Telegram ID is ${telegramId}\n` +
+          `Status: ${response.status} - ${response.statusText}`
         );
         return;
       }
 
       const userData = await response.json();
+      console.log(`Found user data:`, {
+        accountAddress: userData.accountAddress,
+        verified: userData.verified,
+        telegramHandle: userData.telegramHandle
+      });
       
       // Call LLM router with user's message
       const reply = await llmRouter.handleMessage({
@@ -94,7 +133,7 @@ async function main() {
       await ctx.reply(reply, { parse_mode: "Markdown" });
     } catch (error) {
       console.error("Error processing message:", error);
-      await ctx.reply("Sorry, I encountered an error. Please try again later.");
+      await ctx.reply(`Sorry, I encountered an error: ${error.message}\n\nPlease try again later.`);
     }
   });
 

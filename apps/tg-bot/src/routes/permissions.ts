@@ -74,20 +74,38 @@ export function registerPermissionRoutes(app: Express) {
   app.get("/api/users/by-telegram/:telegramId", async (req: Request, res: Response) => {
     const telegramId = req.params.telegramId;
     
-    // Look up by telegram ID first
-    const entry = userStore.get(`telegram:${telegramId}`);
-    if (!entry) return res.status(404).json({ error: "Not linked" });
+    console.log(`Bot looking up user for Telegram ID: ${telegramId}`);
     
-    // Check if account is verified
+    // Check if account is verified (primary source of truth)
     const verifiedAccount = await getVerifiedAccount(telegramId);
     
+    if (!verifiedAccount) {
+      console.log(`No verified account found for Telegram ID: ${telegramId}`);
+      return res.status(404).json({ error: "Not linked" });
+    }
+    
+    console.log(`Found verified account:`, {
+      address: verifiedAccount.accountAddress,
+      handle: verifiedAccount.telegramHandle,
+      verifiedAt: verifiedAccount.verifiedAt
+    });
+    
+    // Also check permissions store for additional data
+    const permissionsEntry = userStore.get(`telegram:${telegramId}`);
+    
     res.json({
-      ...entry,
-      verified: !!verifiedAccount,
-      verificationDetails: verifiedAccount ? {
+      accountAddress: verifiedAccount.accountAddress,
+      telegramId: verifiedAccount.telegramId,
+      telegramHandle: verifiedAccount.telegramHandle,
+      templateId: permissionsEntry?.templateId || "custom",
+      expiry: permissionsEntry?.expiry || 0,
+      verified: true,
+      verificationDetails: {
         verifiedAt: verifiedAccount.verifiedAt,
         telegramHandle: verifiedAccount.telegramHandle,
-      } : null
+      },
+      // Include session key if available from permissions
+      sessionKey: permissionsEntry?.sessionKey
     });
   });
 

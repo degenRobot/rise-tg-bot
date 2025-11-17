@@ -5,17 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsx build src/index.ts --outdir dist",
-    "start": "node dist/index.js"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test:signature": "npx tsx tests/test-smart-wallet-verification.ts",
+    "test:real-signature": "npx tsx tests/test-real-signature.ts",
+    "test:end-to-end": "npx tsx tests/test-end-to-end-flow.ts",
+    "test:parse-signature": "npx tsx tests/parse-signature.ts"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.0.68",
+    "@tanstack/react-query": "^5.90.10",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "openai": "^6.9.0",
+    "ox": "^0.9.14",
+    "rise-wallet": "^0.2.29",
     "telegraf": "^4.16.3",
     "viem": "^2.21.58",
+    "wagmi": "^2.19.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {

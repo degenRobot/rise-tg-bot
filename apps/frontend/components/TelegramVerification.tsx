@@ -102,12 +102,12 @@ export function TelegramVerification({ onVerified }: TelegramVerificationProps) 
         throw new Error(`Failed to sign message: ${signError?.message || 'Unknown error'}`);
       }
       
-      // Validate signature format
-      if (!signature || signature.length !== 132) {
+      // Validate signature format - allow both EOA (132 chars) and smart wallet (longer) signatures
+      if (!signature || signature.length < 132) {
         console.error("Invalid signature format:", {
           signature,
           length: signature?.length,
-          expected: 132,
+          minimumExpected: 132,
           allZeros: signature?.match(/^0x0+$/) !== null
         });
         
@@ -116,6 +116,17 @@ export function TelegramVerification({ onVerified }: TelegramVerificationProps) 
         }
         
         throw new Error("Invalid signature received from wallet");
+      }
+      
+      // Log signature type and provide user feedback
+      if (signature.length === 132) {
+        console.log("Standard EOA signature detected (132 chars)");
+      } else if (signature.length > 1000) {
+        console.log(`RISE smart wallet signature detected (${signature.length} chars)`);
+        console.log("This will be verified using smart wallet verification");
+        console.log("✅ Complex signature format accepted - this is expected for RISE wallet");
+      } else {
+        console.log(`Intermediate signature detected (${signature.length} chars)`);
       }
       
       // Step 3: Submit signature to backend for verification

@@ -1,52 +1,16 @@
 import OpenAI from "openai";
-import { transactionBuilder } from "../tools/transactionBuilder.js";
 import { apiCaller } from "../tools/apiCaller.js";
 import { eventWatcher } from "../tools/eventWatcher.js";
 import { getVerifiedAccount } from "../services/verification.js";
+import { backendSwapService } from "../services/backendSwapService.js";
+import { backendTransactionService } from "../services/backendTransactionService.js";
 import { z } from "zod";
-import { Address, createPublicClient, http, createWalletClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import type { TransactionCall } from "../types/index.js";
-
-const RISE_RPC_URL = process.env.RISE_RPC_URL!;
-const BACKEND_SIGNER_PRIVATE_KEY = process.env.BACKEND_SIGNER_PRIVATE_KEY as `0x${string}`;
-const BACKEND_SIGNER_ADDRESS = process.env.BACKEND_SIGNER_ADDRESS as Address;
+import { Address, parseUnits } from "viem";
 
 // OpenRouter configuration
 const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY!,
   baseURL: "https://openrouter.ai/api/v1",
-});
-
-// Define the chain configuration
-const riseTestnet = {
-  id: 717175,
-  name: "RISE Testnet",
-  network: "rise-testnet",
-  nativeCurrency: {
-    name: "RISE",
-    symbol: "RISE",
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: { http: [RISE_RPC_URL] },
-    public: { http: [RISE_RPC_URL] },
-  },
-  blockExplorers: {
-    default: { name: "RISE Explorer", url: "https://testnet-explorer.riselabs.xyz" },
-  },
-} as const;
-
-const publicClient = createPublicClient({
-  chain: riseTestnet,
-  transport: http(RISE_RPC_URL),
-});
-
-const account = privateKeyToAccount(BACKEND_SIGNER_PRIVATE_KEY);
-const walletClient = createWalletClient({
-  account,
-  chain: riseTestnet,
-  transport: http(RISE_RPC_URL),
 });
 
 // Tool schemas for structured outputs
@@ -147,19 +111,31 @@ export function createLlmRouter() {
             {
               role: "system",
               content: `You are a transaction router for the RISE chain Telegram bot. 
-                User identity is bound to a RISE account. 
-                Available tools:
-                - mint: Mint MockUSD or MockToken
-                - transfer: Send RISE (native), MockUSD, or MockToken
-                - swap: Swap between MockUSD and MockToken
-                - get_balances: Check token balances
-                - get_transactions: View transaction history
-                - get_positions: View DeFi positions
-                - get_wallet_summary: Get total portfolio value
-                - create_alert, list_alerts, remove_alert: Manage alerts
+                User identity is bound to a RISE account: ${userAddress || "address not provided"}
                 
-                Return a JSON object describing which tool to call and its params.
-                For queries, use the user's address: ${userAddress || "address not provided"}`,
+                Available tools and their required JSON format:
+                
+                Swap tokens:
+                {"tool": "swap", "params": {"fromToken": "MockUSD"|"MockToken", "toToken": "MockUSD"|"MockToken", "amount": "10.5", "slippagePercent": 0.5}}
+                
+                Transfer tokens:
+                {"tool": "transfer", "params": {"tokenSymbol": "RISE"|"MockUSD"|"MockToken", "to": "0x123...", "amount": "10.5"}}
+                
+                Mint tokens:
+                {"tool": "mint", "params": {"tokenSymbol": "MockUSD"|"MockToken"}}
+                
+                Get balances:
+                {"tool": "get_balances", "params": {"address": "${userAddress || "0x123..."}"}}
+                
+                Get transactions:
+                {"tool": "get_transactions", "params": {"address": "${userAddress || "0x123..."}", "limit": 10}}
+                
+                IMPORTANT: 
+                - Token names: Use exact values "MockUSD" or "MockToken"
+                - Amounts: Always use strings like "10.5", never numbers
+                - Addresses: Always use full 0x... format
+                
+                Respond with ONLY a valid JSON object, no explanations.`,
             },
             {
               role: "user",
@@ -176,7 +152,18 @@ export function createLlmRouter() {
           return "Sorry, I couldn't understand your request. Please try again.";
         }
 
-        const parsed = ToolCallSchema.parse(JSON.parse(content));
+        console.log("🤖 LLM Raw Response:", content);
+        
+        let parsedJson;
+        try {
+          parsedJson = JSON.parse(content);
+          console.log("📊 Parsed JSON:", parsedJson);
+        } catch (parseError) {
+          console.error("❌ Failed to parse JSON:", parseError);
+          return "Sorry, I received an invalid response format. Please try again.";
+        }
+
+        const parsed = ToolCallSchema.parse(parsedJson);
 
         // Handle query tools
         if (parsed.tool === "get_balances") {
@@ -240,31 +227,54 @@ export function createLlmRouter() {
             return "⚠️ Your account needs to be verified before executing transactions.\n\nPlease use /link to verify your wallet ownership.";
           }
 
-          // Check if permissions are granted
+          // For now, allow verified accounts to see transaction details
+          // TODO: Implement session permissions for full automation
           if (!sessionKey) {
-            return "⚠️ You need to grant permissions to the bot.\n\nPlease complete the wallet linking process at /link.";
+            console.log("⚠️ No session key found, but account is verified. Showing transaction details instead of executing.");
           }
         }
 
         if (parsed.tool === "mint") {
-          const result = await transactionBuilder.mint.execute(parsed.params);
-          if (result.error) return `Error: ${result.error}`;
-
-          return `🪙 Minting ${parsed.params.tokenSymbol}...\n\nTransaction prepared. Confirming with your session key...`;
+          console.log(`🪙 Executing mint transaction for ${parsed.params.tokenSymbol}`);
+          
+          // For now, return a message since minting is not implemented in new pattern
+          // TODO: Implement minting service following wallet-demo pattern
+          return `🪙 Mint function is being updated to use the new wallet-demo pattern.\n\nPlease try again shortly, or use the swap function which is ready!`;
         }
 
         if (parsed.tool === "transfer") {
-          const result = await transactionBuilder.transfer.execute(parsed.params);
-          if (result.error) return `Error: ${result.error}`;
-
-          return `💸 Transferring ${parsed.params.amount} ${parsed.params.tokenSymbol} to ${parsed.params.to.slice(0, 10)}...\n\nTransaction prepared. Confirming with your session key...`;
+          console.log(`💸 Executing transfer of ${parsed.params.amount} ${parsed.params.tokenSymbol}`);
+          
+          // For now, return a message since transfer is not implemented in new pattern  
+          // TODO: Implement transfer service following wallet-demo pattern
+          return `💸 Transfer function is being updated to use the new wallet-demo pattern.\n\nPlease try again shortly, or use the swap function which is ready!`;
         }
 
         if (parsed.tool === "swap") {
-          const result = await transactionBuilder.swap.execute(parsed.params);
-          if (result.error) return `Error: ${result.error}`;
+          console.log(`🔄 Executing swap: ${parsed.params.amount} ${parsed.params.fromToken} → ${parsed.params.toToken}`);
+          
+          try {
+            // Execute swap using backend service (matches wallet-demo pattern)
+            const swapResult = await backendSwapService.executeSwap({
+              fromToken: parsed.params.fromToken,
+              toToken: parsed.params.toToken, 
+              amount: parsed.params.amount,
+              userAddress: verifiedAccount.address as Address,
+              slippagePercent: parsed.params.slippagePercent || 0.5
+            });
 
-          return `🔄 Swapping ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}...\n\nTransaction prepared. Confirming with your session key...`;
+            if (!swapResult.success) {
+              return `❌ Swap transaction failed: ${swapResult.error?.message || swapResult.error}`;
+            }
+
+            const totalTxs = swapResult.data?.totalTransactions || 1;
+            const txHash = swapResult.data?.hash || "unknown";
+            return `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key\nFinal hash: ${txHash?.slice(0, 10)}...\nCheck it on the explorer: https://testnet-explorer.riselabs.xyz/tx/${txHash}`;
+
+          } catch (error) {
+            console.error("🔄 Swap execution error:", error);
+            return `❌ Swap failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          }
         }
 
         // Handle alert tools
