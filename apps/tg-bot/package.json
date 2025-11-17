@@ -1,0 +1,26 @@
+{
+  "name": "tg-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsx build src/index.ts --outdir dist",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "telegraf": "^4.16.3",
+    "cors": "^2.8.5",
+    "viem": "^2.21.58",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

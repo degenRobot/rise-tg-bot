@@ -1,0 +1,37 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "generate-certs": "node scripts/setup-https.js",
+    "dev": "npm run dev:https",
+    "dev:http": "next dev",
+    "dev:https": "next dev --experimental-https --experimental-https-key ./certs/localhost-key.pem --experimental-https-cert ./certs/localhost.pem",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.62.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "next": "16.0.3",
+    "ox": "^0.9.8",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "rise-wallet": "^0.2.29",
+    "tailwind-merge": "^3.3.1",
+    "viem": "^2.38.3",
+    "wagmi": "^2.18.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
