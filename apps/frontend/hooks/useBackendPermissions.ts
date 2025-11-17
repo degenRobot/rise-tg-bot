@@ -42,12 +42,12 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
 
       const permissionParams = {
         key: { 
-          publicKey: backendKeyAddress, 
+          publicKey: backendKeyAddress as `0x${string}`, 
           type: "p256" as const // Use p256 type for EOA as well
         },
         expiry: Math.floor(Date.now() / 1000) + expirySeconds,
         feeToken: {
-          limit: "1" as any, // String format like wallet-demo
+          limit: "1" as `${number}`, // String format like wallet-demo
           symbol: "ETH",
         },
         permissions: permissionData,

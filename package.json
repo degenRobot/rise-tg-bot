@@ -4,12 +4,18 @@
   "scripts": {
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:tg-bot": "pnpm --filter tg-bot dev",
-    "dev": "pnpm dev:frontend & pnpm dev:tg-bot",
+    "dev:all": "concurrently -n \"frontend,bot\" -c \"blue,green\" \"pnpm dev:frontend\" \"pnpm dev:tg-bot\"",
+    "dev": "node scripts/dev-simple.js",
+    "dev:ngrok": "node scripts/dev-with-ngrok.js",
+    "dev:no-ngrok": "pnpm dev:all",
     "build:frontend": "pnpm --filter frontend build",
     "build:tg-bot": "pnpm --filter tg-bot build",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:bot": "cd apps/tg-bot && ./tests/run-all-tests.sh"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "typescript": "^5.6.3"
   }
 }

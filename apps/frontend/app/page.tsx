@@ -8,7 +8,7 @@ import { PERMISSION_ITEMS, DEFAULT_SELECTIONS } from "../config/permissions";
 import { Card, CardHeader, CardContent, CardFooter } from "../components/Card";
 import { Button } from "../components/Button";
 import { ActivePermissions } from "../components/ActivePermissions";
-import { TelegramLogin } from "../components/TelegramLogin";
+import { TelegramVerification } from "../components/TelegramVerification";
 import { formatDistanceToNow } from "date-fns";
 
 interface TelegramUser {
@@ -116,21 +116,33 @@ export default function Home() {
     }
   };
 
-  const handleTelegramAuth = async (user: TelegramUser) => {
-    console.log("Telegram auth:", user);
+  const handleTelegramVerified = async (telegramHandle: string) => {
+    console.log("Telegram handle verified:", telegramHandle);
+    
+    // Create a user object for backward compatibility
+    const user: TelegramUser = {
+      id: 0, // We'll use handle as identifier
+      first_name: telegramHandle,
+      last_name: "",
+      username: telegramHandle,
+      photo_url: "",
+      auth_date: Math.floor(Date.now() / 1000),
+      hash: "",
+    };
+    
     setTelegramUser(user);
     
     // Sync with backend
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/permissions/sync`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8008"}/api/permissions/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accountAddress: address,
           backendKeyAddress,
           expiry: Math.floor(Date.now() / 1000) + (expiryDays * 24 * 60 * 60),
-          telegramId: user.id.toString(),
-          telegramUsername: user.username,
+          telegramId: telegramHandle, // Use handle as ID
+          telegramUsername: telegramHandle,
           telegramData: user,
         }),
       });
@@ -294,7 +306,25 @@ export default function Home() {
         {/* Active Permissions */}
         {isConnected && permissions.length > 0 && (
           <ActivePermissions
-            permissions={permissions}
+            permissions={permissions.map(p => ({
+              id: p.id,
+              key: {
+                publicKey: p.key.publicKey,
+                type: p.key.type,
+              },
+              expiry: p.expiry,
+              permissions: p.permissions ? {
+                calls: p.permissions.calls ? p.permissions.calls.map(c => ({
+                  to: c.to as string | undefined,
+                  signature: c.signature as string | undefined,
+                })) : undefined,
+                spend: p.permissions.spend ? p.permissions.spend.map(s => ({
+                  limit: s.limit.toString(),
+                  period: s.period as string,
+                  token: s.token as string | undefined,
+                })) : undefined,
+              } : undefined,
+            }))}
             onRevoke={revokePermission}
             backendKeyAddress={backendKeyAddress}
           />
@@ -445,10 +475,8 @@ export default function Home() {
                   <p className="text-sm text-gray-600 mb-4">
                     Click the button below to authorize with Telegram
                   </p>
-                  <TelegramLogin
-                    botName={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || "your_bot_name"}
-                    onAuth={handleTelegramAuth}
-                    buttonSize="large"
+                  <TelegramVerification
+                    onVerified={handleTelegramVerified}
                   />
                 </>
               ) : (

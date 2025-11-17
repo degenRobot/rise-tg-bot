@@ -2,6 +2,12 @@ import type { Address } from "viem";
 
 export type Period = "minute" | "hour" | "day" | "week" | "month" | "year";
 
+export type TransactionCall = {
+  to: Address;
+  data?: `0x${string}`;
+  value?: bigint;
+};
+
 export type SpendPermission = {
   token?: Address;
   limit: string; // hex string wei

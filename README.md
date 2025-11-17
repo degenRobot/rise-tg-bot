@@ -1,6 +1,28 @@
-# RISE Telegram Bot
+# RISE Telegram Bot Monorepo
 
-A Telegram bot that allows users to perform wallet operations using natural language through Telegram. The bot uses the RISE blockchain's permission system to execute transactions on behalf of users securely.
+A natural language crypto wallet interface for RISE blockchain, accessible through Telegram. Users can check balances, send tokens, and swap assets using simple conversational commands.
+
+## Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run both frontend and bot
+pnpm dev
+
+# Run with ngrok (for Telegram webhook)
+pnpm dev:ngrok
+```
+
+## Project Status
+
+✅ **Completed Features**:
+- Natural language processing for crypto operations
+- Wallet verification via signatures
+- Token swaps, transfers, and balance queries
+- Persistent file-based storage
+- Comprehensive test suite
 
 ## Overview
 
@@ -35,6 +57,11 @@ cp .env.example .env
 cp apps/frontend/.env.local.example apps/frontend/.env.local
 ```
 
+Update the frontend environment variables:
+- `NEXT_PUBLIC_TELEGRAM_BOT_NAME`: Your Telegram bot username (without @)
+- `NEXT_PUBLIC_BACKEND_KEY_ADDRESS`: The EOA address from step 3
+- `NEXT_PUBLIC_API_URL`: Backend API URL (default: http://localhost:4000)
+
 ### 3. Backend EOA Key
 
 Generate a new EOA (Externally Owned Account) for the bot to use:
@@ -53,7 +80,6 @@ Update your `.env` file with the generated address and private key.
 2. Create a new bot with `/newbot`
 3. Copy the bot token to your `.env` file
 4. Enable inline mode with `/setinline` (optional)
-5. Set up the bot domain for the login widget (required for Telegram authentication)
 
 ### 5. Run Development Servers
 
@@ -61,12 +87,18 @@ Update your `.env` file with the generated address and private key.
 # First time setup - generate SSL certificates
 cd apps/frontend && npm run generate-certs
 
-# Run both frontend (HTTPS) and bot
+# Run both frontend and bot together (recommended)
 pnpm dev
 
-# Or run separately
-pnpm dev:frontend  # https://localhost:3000 (HTTPS)
-pnpm dev:tg-bot    # http://localhost:4000
+# This will start:
+# - Frontend on http://localhost:3000
+# - Bot API on http://localhost:8008
+# - Logs prefixed with [frontend] and [bot]
+
+# Alternative commands:
+pnpm dev:ngrok     # Run with ngrok tunnel for Telegram webhooks
+pnpm dev:frontend  # Run only frontend (https://localhost:3000)
+pnpm dev:tg-bot    # Run only bot server (http://localhost:8008)
 
 # To run frontend without HTTPS
 cd apps/frontend && pnpm dev:http
@@ -84,7 +116,7 @@ cd apps/frontend && pnpm dev:http
 
 1. **Connect Wallet**: Users visit the frontend and connect their RISE wallet
 2. **Grant Permissions**: Select specific permissions to grant to the bot (with customizable checkboxes)
-3. **Link Telegram**: Authenticate with Telegram to link their account to their wallet
+3. **Link Telegram**: Enter Telegram username and sign a message to verify ownership
 4. **Use Bot**: Send natural language commands to the bot on Telegram
 
 ### Three-Step Setup Process
@@ -148,10 +180,10 @@ The bot uses RISE's permission system to execute transactions securely. Users ca
    - Manages permission state and synchronization
    - Integrates with Porto SDK
 
-2. **Telegram Authentication**:
-   - Custom React component for Telegram widget
-   - Secure user verification
-   - Links Telegram ID to wallet address
+2. **Telegram Verification**:
+   - User enters their Telegram username
+   - Signs a message with their wallet to prove ownership
+   - Links Telegram handle to wallet address
 
 3. **Backend API**:
    - RESTful endpoints for permission sync

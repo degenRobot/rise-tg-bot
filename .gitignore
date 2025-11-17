@@ -56,3 +56,5 @@ certs/
 *.pem
 *.key
 *.crt
+
+apps/tg-bot/data/*

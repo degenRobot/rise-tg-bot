@@ -3,7 +3,7 @@ import express from "express";
 import { Telegraf } from "telegraf";
 import cors from "cors";
 import { registerPermissionRoutes } from "./routes/permissions.js";
-// import { createLlmRouter } from "./llm/router.js";
+import { createLlmRouter } from "./llm/router.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -13,15 +13,33 @@ if (!BOT_TOKEN) {
 async function main() {
   const app = express();
   app.use(express.json());
+  
+  // Configure CORS to accept both HTTP and HTTPS
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://localhost:3000",
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+  
   app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000"
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, etc)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
   }));
 
   // Register HTTP routes used by frontend
   registerPermissionRoutes(app);
 
-  // LLM router (OpenRouter) - to be implemented
-  // const llmRouter = createLlmRouter();
+  // LLM router (OpenRouter)
+  const llmRouter = createLlmRouter();
 
   // Telegram bot
   const bot = new Telegraf(BOT_TOKEN);
@@ -55,7 +73,7 @@ async function main() {
 
     // Check if user has linked their wallet
     try {
-      const response = await fetch(`http://localhost:${process.env.PORT || 4000}/api/users/by-telegram/${telegramId}`);
+      const response = await fetch(`http://localhost:${process.env.PORT || 8008}/api/users/by-telegram/${telegramId}`);
       if (!response.ok) {
         await ctx.reply(
           "Please link your wallet first using /link command."
@@ -63,10 +81,17 @@ async function main() {
         return;
       }
 
-      // TODO: Implement LLM routing
-      await ctx.reply(
-        "I received your message. Natural language processing is coming soon! 🚧"
-      );
+      const userData = await response.json();
+      
+      // Call LLM router with user's message
+      const reply = await llmRouter.handleMessage({
+        telegramId,
+        text: userText,
+        userAddress: userData.accountAddress,
+        sessionKey: userData.sessionKey,
+      });
+
+      await ctx.reply(reply, { parse_mode: "Markdown" });
     } catch (error) {
       console.error("Error processing message:", error);
       await ctx.reply("Sorry, I encountered an error. Please try again later.");
@@ -74,7 +99,7 @@ async function main() {
   });
 
   // Start HTTP server
-  const port = process.env.PORT || 4000;
+  const port = process.env.PORT || 8008;
   app.listen(port, () => {
     console.log(`HTTP API listening on ${port}`);
   });
