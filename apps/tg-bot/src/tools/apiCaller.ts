@@ -8,13 +8,13 @@ export const getBalancesTool = tool({
   args: {
     address: tool.schema.string().describe("Wallet address to query"),
   },
-  async execute(args) {
+  async execute(args, context) {
     try {
       const address = args.address.toLowerCase();
       const response = await fetch(`${POINTS_API_URL}/balances/${address}`);
       
       if (!response.ok) {
-        return { error: `Failed to fetch balances: ${response.statusText}` };
+        return JSON.stringify({ error: `Failed to fetch balances: ${response.statusText}` });
       }
 
       const balances = await response.json();
@@ -29,15 +29,16 @@ export const getBalancesTool = tool({
 
       const totalUsdValue = balances.reduce((sum: number, b: any) => sum + (b.usdValue || 0), 0);
 
-      return {
+      return JSON.stringify({
         success: true,
         address,
         balances: formattedBalances,
         totalUsdValue: `$${totalUsdValue.toFixed(2)}`,
         count: balances.length,
-      };
+      });
     } catch (error) {
-      return { error: `API error: ${error.message}` };
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ error: `API error: ${errorMessage}` });
     }
   },
 });
@@ -48,14 +49,14 @@ export const getTransactionHistoryTool = tool({
     address: tool.schema.string().describe("Wallet address to query"),
     limit: tool.schema.number().optional().describe("Number of transactions to fetch (default: 10)"),
   },
-  async execute(args) {
+  async execute(args, context) {
     try {
       const address = args.address.toLowerCase();
       const limit = args.limit || 10;
       const response = await fetch(`${POINTS_API_URL}/calls/${address}?limit=${limit}`);
       
       if (!response.ok) {
-        return { error: `Failed to fetch transactions: ${response.statusText}` };
+        return JSON.stringify({ error: `Failed to fetch transactions: ${response.statusText}` });
       }
 
       const data = await response.json();
@@ -79,15 +80,16 @@ export const getTransactionHistoryTool = tool({
         })),
       }));
 
-      return {
+      return JSON.stringify({
         success: true,
         address,
         transactions: formattedTxs,
         totalCount,
         hasMore: pagination.hasMore,
-      };
+      });
     } catch (error) {
-      return { error: `API error: ${error.message}` };
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ error: `API error: ${errorMessage}` });
     }
   },
 });
@@ -97,13 +99,13 @@ export const getPortfolioPositionsTool = tool({
   args: {
     address: tool.schema.string().describe("Wallet address to query"),
   },
-  async execute(args) {
+  async execute(args, context) {
     try {
       const address = args.address.toLowerCase();
       const response = await fetch(`${POINTS_API_URL}/positions/${address}`);
       
       if (!response.ok) {
-        return { error: `Failed to fetch positions: ${response.statusText}` };
+        return JSON.stringify({ error: `Failed to fetch positions: ${response.statusText}` });
       }
 
       const data = await response.json();
@@ -120,15 +122,16 @@ export const getPortfolioPositionsTool = tool({
         changePercent: p.changePercent24h ? `${p.changePercent24h.toFixed(2)}%` : "N/A",
       }));
 
-      return {
+      return JSON.stringify({
         success: true,
         address,
         positions: formattedPositions,
         totalValue: `$${totalValue.toFixed(2)}`,
         count: positions.length,
-      };
+      });
     } catch (error) {
-      return { error: `API error: ${error.message}` };
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ error: `API error: ${errorMessage}` });
     }
   },
 });
@@ -138,18 +141,18 @@ export const getWalletSummaryTool = tool({
   args: {
     address: tool.schema.string().describe("Wallet address to query"),
   },
-  async execute(args) {
+  async execute(args, context) {
     try {
       const address = args.address.toLowerCase();
       const response = await fetch(`${POINTS_API_URL}/wallet-summary/${address}`);
       
       if (!response.ok) {
-        return { error: `Failed to fetch wallet summary: ${response.statusText}` };
+        return JSON.stringify({ error: `Failed to fetch wallet summary: ${response.statusText}` });
       }
 
       const summary = await response.json();
 
-      return {
+      return JSON.stringify({
         success: true,
         address: summary.account,
         totalValue: summary.formattedTotal,
@@ -163,9 +166,10 @@ export const getWalletSummaryTool = tool({
             count: summary.breakdown.protocols.count,
           },
         },
-      };
+      });
     } catch (error) {
-      return { error: `API error: ${error.message}` };
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ error: `API error: ${errorMessage}` });
     }
   },
 });

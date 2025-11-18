@@ -1,5 +1,5 @@
-import { Address, Hex } from "viem";
-import { P256, Signature, Hex as OxHex } from "ox";
+import { Address } from "viem";
+import { P256, Signature, Hex } from "ox";
 import { riseRelayClient, backendSessionKey } from "../config/backendRiseClient.js";
 
 // Types matching wallet-demo exactly
@@ -61,10 +61,10 @@ class BackendTransactionService {
       });
       
       // Convert to hex format (remove 0x04 prefix if present)
-      const keyBytes = publicKeyBytes.prefix ? 
+      const keyBytes = publicKeyBytes instanceof Uint8Array ? 
+        publicKeyBytes : 
         new Uint8Array([...publicKeyBytes.x.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16)), 
-                        ...publicKeyBytes.y.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16))]) :
-        publicKeyBytes;
+                        ...publicKeyBytes.y.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16))]);
       
       const publicKeyHex = `0x${Buffer.from(keyBytes).toString('hex')}`;
       
@@ -113,11 +113,11 @@ class BackendTransactionService {
   }
 
   /**
-   * Execute with session key using Porto RPC schema parameter structure
-   * Based on porto-rise/src/core/internal/schema/rpc.ts definitions
+   * Execute with session key matching wallet-demo's executeWithSessionKey exactly
+   * Based on wallet-demo/packages/nextjs/wallet-playground/src/hooks/useTransaction.ts
    */
   async executeWithSessionKey(calls: TransactionCall[], userAddress: Address): Promise<TransactionData> {
-    console.log("🔑 Executing using backend session key with Porto RPC schema...");
+    console.log("🔑 Executing using backend session key (wallet-demo pattern)...");
     
     if (!this.sessionKey) {
       throw new Error("Session key not initialized");
@@ -136,76 +136,100 @@ class BackendTransactionService {
         callsCount: calls.length,
       });
 
-      // Parameters according to Porto RPC schema (porto-rise/src/core/internal/schema/rpc.ts)
-      const prepareParams = {
-        calls: calls.map(call => ({
-          to: call.to,
-          data: call.data,
-          value: call.value,
-        })),
-        chainId: OxHex.fromNumber(this.chainId),
-        from: userAddress,
-        atomicRequired: true,
-        key: {
-          expiry: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours from now
-          prehash: false, // We're not prehashing the digest
-          publicKey: this.sessionKey.publicKey,
-          role: "normal" as const, // Backend session key is normal role
-          type: "p256" as const,
+      // Match wallet-demo's intentParams exactly - this is the key fix!
+      const intentParams = [
+        {
+          calls: calls.map(call => ({
+            to: call.to,
+            data: call.data,
+            value: call.value,
+          })),
+          chainId: Hex.fromNumber(this.chainId), // Exact match to wallet-demo: Hex.fromNumber(chainId)
+          from: userAddress,
+          atomicRequired: true, // This was missing! Required by wallet-demo
+          key: {
+            publicKey: this.sessionKey.publicKey,
+            type: "p256" as const,
+            prehash: false, // Required by relay client even though wallet-demo doesn't include it
+          },
+          // Add capabilities field required by direct relay client
+          capabilities: {
+            meta: {
+              feePayer: userAddress,
+              feeToken: "0x0000000000000000000000000000000000000000",
+            },
+          },
         },
-      };
+      ];
 
-      console.log("📋 Prepare parameters:", {
-        calls: prepareParams.calls.length,
-        chainId: prepareParams.chainId,
-        from: prepareParams.from,
-        key: prepareParams.key.publicKey.slice(0, 20) + "...",
+      console.log("📋 Intent parameters (wallet-demo format):", {
+        calls: intentParams[0].calls.length,
+        chainId: intentParams[0].chainId,
+        from: intentParams[0].from,
+        atomicRequired: intentParams[0].atomicRequired,
+        key: intentParams[0].key.publicKey.slice(0, 20) + "...",
       });
 
-      // Prepare calls using Porto RPC schema structure
-      console.log("⚡ Calling wallet_prepareCalls via relay client...");
-      const prepareResponse = await this.relayClient.request({
+      // Prepare calls using exact wallet-demo pattern
+      console.log("⚡ Calling wallet_prepareCalls (wallet-demo pattern)...");
+      const prepareResponse = await (this.relayClient as any).request({
         method: "wallet_prepareCalls",
-        params: [prepareParams],
+        params: intentParams,
       });
+      
+      const { digest, capabilities, ...request } = prepareResponse;
 
       console.log("📊 Prepare response keys:", Object.keys(prepareResponse));
-      console.log("🎯 Digest to sign:", prepareResponse.digest);
+      console.log("📊 Request keys after destructuring:", Object.keys(request));
+      console.log("🎯 Digest to sign:", digest);
 
       // Sign the intent with P256
       console.log("✍️  Signing with P256...");
       const signature = Signature.toHex(
         P256.sign({
-          payload: prepareResponse.digest as `0x${string}`,
+          payload: digest as `0x${string}`,
           privateKey: this.sessionKey.privateKey as Address,
         })
       );
 
       console.log("📝 Generated signature:", signature.slice(0, 20) + "...");
 
-      // Send prepared calls using Porto RPC schema structure
-      console.log("📤 Calling wallet_sendPreparedCalls via relay client...");
+      // Send prepared calls using correct Porto RPC schema
+      console.log("📤 Calling wallet_sendPreparedCalls (Porto RPC schema)...");
       const sendParams = {
-        capabilities: prepareResponse.capabilities,
-        chainId: prepareResponse.chainId,
-        context: prepareResponse.context,
-        key: prepareResponse.key,
+        // Only include capabilities if they have feeSignature
+        ...(capabilities?.feeSignature ? { 
+          capabilities: { feeSignature: capabilities.feeSignature } 
+        } : {}),
+        // Context must only include preCall and quote, not the entire massive context
+        context: {
+          ...(request.context?.preCall ? { preCall: request.context.preCall } : {}),
+          ...(request.context?.quote ? { quote: request.context.quote } : {}),
+        },
+        // Key information from prepare response
+        ...(request.key ? { key: request.key } : {}),
+        // Our signature
         signature,
       };
 
-      const result = await this.relayClient.request({
+      const result = await (this.relayClient as any).request({
         method: "wallet_sendPreparedCalls",
         params: [sendParams],
       });
+
+      console.log("📦 Raw sendPreparedCalls result:", result);
+      console.log("📦 Result type:", typeof result);
+      console.log("📦 Result keys:", result ? Object.keys(result) : "null/undefined");
 
       // Process result (should be array according to Porto RPC schema)
       let resp = result;
       if (Array.isArray(result) && result.length !== 0) {
         resp = result[0];
+        console.log("📦 Using first array element:", resp);
       }
 
       console.log("✅ Backend session key execution successful!");
-      console.log("📊 Result:", resp);
+      console.log("📊 Final processed result:", resp);
 
       return {
         hash: resp.id || resp.hash || resp.transactionHash || "unknown",

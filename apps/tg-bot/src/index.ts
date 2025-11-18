@@ -42,7 +42,7 @@ async function main() {
   const llmRouter = createLlmRouter();
 
   // Telegram bot
-  const bot = new Telegraf(BOT_TOKEN);
+  const bot = new Telegraf(BOT_TOKEN!);
 
   bot.start(async (ctx) => {
     await ctx.reply(
@@ -115,7 +115,12 @@ async function main() {
         return;
       }
 
-      const userData = await response.json();
+      const userData = await response.json() as {
+        accountAddress: string;
+        verified: boolean;
+        telegramHandle?: string;
+        sessionKey?: string;
+      };
       console.log(`Found user data:`, {
         accountAddress: userData.accountAddress,
         verified: userData.verified,
@@ -126,14 +131,15 @@ async function main() {
       const reply = await llmRouter.handleMessage({
         telegramId,
         text: userText,
-        userAddress: userData.accountAddress,
+        userAddress: userData.accountAddress as `0x${string}`,
         sessionKey: userData.sessionKey,
       });
 
       await ctx.reply(reply, { parse_mode: "Markdown" });
     } catch (error) {
       console.error("Error processing message:", error);
-      await ctx.reply(`Sorry, I encountered an error: ${error.message}\n\nPlease try again later.`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await ctx.reply(`Sorry, I encountered an error: ${errorMessage}\n\nPlease try again later.`);
     }
   });
 

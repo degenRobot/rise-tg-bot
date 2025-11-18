@@ -167,53 +167,77 @@ export function createLlmRouter() {
 
         // Handle query tools
         if (parsed.tool === "get_balances") {
-          const result = await apiCaller.getBalances.execute({
+          const resultString = await apiCaller.getBalances.execute({
             address: parsed.params.address || userAddress || "",
+          }, {
+            sessionID: telegramId,
+            messageID: "msg_" + Date.now(),
+            agent: "telegram-bot",
+            abort: new AbortController()
           });
+          const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
           
           let message = `💰 **Wallet Balances**\n`;
-          message += `Total Value: ${result.totalUsdValue}\n\n`;
-          result.balances.forEach((b: any) => {
-            message += `${b.token}: ${b.balance} (${b.usdValue})\n`;
-          });
+          if (result.success) {
+            message += `Total Value: ${result.totalUsdValue}\n\n`;
+            result.balances.forEach((b: any) => {
+              message += `${b.token}: ${b.balance} (${b.usdValue})\n`;
+            });
+          }
           return message;
         }
 
         if (parsed.tool === "get_transactions") {
-          const result = await apiCaller.getTransactionHistory.execute({
+          const resultString = await apiCaller.getTransactionHistory.execute({
             address: parsed.params.address || userAddress || "",
             limit: parsed.params.limit,
+          }, {
+            sessionID: telegramId,
+            messageID: "msg_" + Date.now(),
+            agent: "telegram-bot",
+            abort: new AbortController()
           });
+          const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
           
           let message = `📋 **Recent Transactions**\n`;
-          message += `Total: ${result.totalCount} transactions\n\n`;
-          result.transactions.slice(0, 5).forEach((tx: any) => {
-            message += `${tx.success ? "✅" : "❌"} ${tx.timestamp}\n`;
-            message += `Hash: ${tx.txHash.slice(0, 10)}...\n`;
-            tx.calls.forEach((call: any) => {
-              if (call.isTransfer && call.tokenSymbol) {
-                message += `  → ${call.functionName} ${call.tokenSymbol}\n`;
-              } else {
-                message += `  → ${call.functionName || "Contract call"}\n`;
-              }
+          if (result.success) {
+            message += `Total: ${result.totalCount} transactions\n\n`;
+            result.transactions.slice(0, 5).forEach((tx: any) => {
+              message += `${tx.success ? "✅" : "❌"} ${tx.timestamp}\n`;
+              message += `Hash: ${tx.txHash.slice(0, 10)}...\n`;
+              tx.calls.forEach((call: any) => {
+                if (call.isTransfer && call.tokenSymbol) {
+                  message += `  → ${call.functionName} ${call.tokenSymbol}\n`;
+                } else {
+                  message += `  → ${call.functionName || "Contract call"}\n`;
+                }
+              });
+              message += "\n";
             });
-            message += "\n";
-          });
+          }
           return message;
         }
 
         if (parsed.tool === "get_wallet_summary") {
-          const result = await apiCaller.getWalletSummary.execute({
+          const resultString = await apiCaller.getWalletSummary.execute({
             address: parsed.params.address || userAddress || "",
+          }, {
+            sessionID: telegramId,
+            messageID: "msg_" + Date.now(),
+            agent: "telegram-bot",
+            abort: new AbortController()
           });
+          const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
           
           let message = `📊 **Wallet Summary**\n`;
-          message += `Total Portfolio Value: ${result.totalValue}\n\n`;
-          message += `💎 Tokens: ${result.breakdown.tokens.value} (${result.breakdown.tokens.count} tokens)\n`;
-          message += `🏦 DeFi Positions: ${result.breakdown.protocols.value} (${result.breakdown.protocols.count} positions)\n`;
+          if (result.success) {
+            message += `Total Portfolio Value: ${result.totalValue}\n\n`;
+            message += `💎 Tokens: ${result.breakdown.tokens.value} (${result.breakdown.tokens.count} tokens)\n`;
+            message += `🏦 DeFi Positions: ${result.breakdown.protocols.value} (${result.breakdown.protocols.count} positions)\n`;
+          }
           return message;
         }
 
@@ -259,7 +283,7 @@ export function createLlmRouter() {
               fromToken: parsed.params.fromToken,
               toToken: parsed.params.toToken, 
               amount: parsed.params.amount,
-              userAddress: verifiedAccount.address as Address,
+              userAddress: (userAddress || "") as Address,
               slippagePercent: parsed.params.slippagePercent || 0.5
             });
 
@@ -279,24 +303,43 @@ export function createLlmRouter() {
 
         // Handle alert tools
         if (parsed.tool === "create_alert") {
-          const result = await eventWatcher.createAlert.execute(parsed.params);
+          const resultString = await eventWatcher.createAlert.execute(parsed.params, {
+            sessionID: telegramId,
+            messageID: "msg_" + Date.now(),
+            agent: "telegram-bot",
+            abort: new AbortController()
+          });
+          const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
           
-          return `🔔 Alert created!\n\nID: ${result.alertId}\nType: ${parsed.params.type}\n\n${result.message}`;
+          if (result.alertId && result.message) {
+            return `🔔 Alert created!\n\nID: ${result.alertId}\nType: ${parsed.params.type}\n\n${result.message}`;
+          }
+          return `🔔 Alert created!`;
         }
 
         if (parsed.tool === "list_alerts") {
-          const result = await eventWatcher.listAlerts.execute({});
+          const resultString = await eventWatcher.listAlerts.execute({}, {
+            sessionID: telegramId,
+            messageID: "msg_" + Date.now(),
+            agent: "telegram-bot",
+            abort: new AbortController()
+          });
+          const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
           
           if (result.count === 0) {
             return "📭 You don't have any active alerts.";
           }
           
-          let message = `🔔 **Active Alerts** (${result.count})\n\n`;
-          result.alerts.forEach((alert: any) => {
-            message += `ID: ${alert.id}\nType: ${alert.type}\nCreated: ${alert.createdAt}\n\n`;
-          });
+          let message = `🔔 **Active Alerts**`;
+          if (result.count) message += ` (${result.count})`;
+          message += `\n\n`;
+          if (result.alerts) {
+            result.alerts.forEach((alert: any) => {
+              message += `ID: ${alert.id}\nType: ${alert.type}\nCreated: ${alert.createdAt}\n\n`;
+            });
+          }
           return message;
         }
 

@@ -1,84 +1,82 @@
-# RISE TG Bot Test Suite
+# RISE Telegram Bot Tests
 
-This directory contains comprehensive tests for the RISE Telegram bot's natural language processing and tool routing capabilities.
+## 🧪 Active Tests
 
-## Test Files
+### **Core Backend Tests** ⚡
+- **`test-rise-relay-client.ts`** - Main test for RISE relay client backend (✅ Working)
+- **`test-unique-transaction.ts`** - Test unique transactions to avoid duplicate errors
 
-### 1. `test-swap-prompts.ts`
-Tests swap transaction construction to ensure compatibility with wallet-demo patterns.
+### **Integration Tests** 🔄
+- **`test-end-to-end-flow.ts`** - Full transaction flow testing
+- **`test-real-signature.ts`** - Real signature verification
+- **`test-smart-wallet-verification.ts`** - Smart wallet verification
+- **`test-wallet-signing.ts`** - Wallet signing functionality
 
-**Key Test Cases:**
-- Basic swaps: "swap 10 MockUSD for MockToken"
-- Natural language: "trade 5.5 mocktoken for mockusd"
-- With parameters: "exchange 100 MOCKUSD to MOCKTOKEN with 1% slippage"
-- Edge cases: Same token swaps, zero amounts, invalid tokens
+### **Bot Tests** 🤖
+- **`test-api-endpoints.ts`** - Test API endpoint functionality  
+- **`test-bot-flow.ts`** - Test complete bot conversation flow
+- **`test-e2e.ts`** - End-to-end testing
+- **`test-signature.ts`** - Test signature verification
+- **`test-tools.ts`** - Test bot tools and integrations
+- **`test-basic.js`** - Basic functionality tests
 
-**Verifies:**
-- Correct transaction call construction
-- Approval + swap call sequence
-- Permission requirements
-- Slippage calculations
-- Deadline handling
+### **Development Tests** 🔧
+- **`test-bot-lookup.ts`** - Bot user lookup functionality
+- **`test-improved-router.ts`** - LLM router improvements
+- **`test-llm-routing.ts`** - Language model routing
+- **`test-query-prompts.ts`** - Query prompt testing
+- **`test-rise-wallet-pattern.ts`** - RISE wallet pattern testing
+- **`test-swap-prompts.ts`** - Swap prompt testing
 
-### 2. `test-query-prompts.ts`
-Tests data query operations against the points-api endpoints.
+### **Test Runner** 🎯
+- **`run-all-tests.sh`** - Test runner script
 
-**Key Test Cases:**
-- Balance queries: "what's my balance", "show me my tokens"
-- Transaction history: "show my recent transactions", "last 5 transactions"
-- Portfolio positions: "show my DeFi positions", "what protocols am I using"
-- Wallet summary: "total portfolio value", "how much am I worth"
+## 📁 Archived Tests (`archive/`)
 
-**Verifies:**
-- Correct API endpoint mapping
-- Response structure validation
-- Edge cases (invalid addresses, empty results)
-- Multiple address queries
+Historical and debugging tests that are no longer actively used but kept for reference:
 
-### 3. `test-llm-routing.ts`
-Tests the LLM's ability to route prompts to appropriate tools.
+- `test-backend-wagmi.ts` - Old wagmi backend (replaced by relay client)
+- `test-porto-connector.ts` - Porto connector tests (replaced by relay client) 
+- `test-session-key-signing.ts` - Session key signing (integrated into transaction service)
+- `test-wallet-demo-pattern.ts` - Wallet demo patterns (integrated into transaction service)
+- `test-sendpreparedcalls-debug.ts` - SendPreparedCalls debugging (issue resolved)
+- `test-signature-debug.ts` - Signature debugging (issue resolved)
+- `debug-rise-signing.ts` - RISE signing debugging (issue resolved)
+- `test-direct-rise.ts` - Direct RISE service (replaced by relay client)
+- `test-backend-wallet.ts` - Backend wallet testing (replaced by transaction service)
+- `prompt-examples.md` - Historical prompt examples
+- `parse-signature.ts` - Signature parsing utilities
+- `test-edge-cases.ts` - Edge case testing
 
-**Key Test Cases:**
-- Transaction routing: Mint, transfer, swap operations
-- Query routing: Balance, transaction, portfolio queries
-- Ambiguous prompts: "help me with my tokens"
-- Unsupported operations: "stake my tokens", "buy NFT"
-- Non-crypto requests: "what's the weather"
+## 🚀 Running Tests
 
-**Features:**
-- Model comparison (GPT-4o mini, Sherlock Think Alpha, Claude)
-- Structured output validation with Zod
-- Parameter extraction testing
-- Accuracy metrics
+```bash
+# Run all active tests
+./run-all-tests.sh
 
-### 4. `test-edge-cases.ts`
-Tests system behavior under edge conditions and error scenarios.
+# Run specific test
+npx tsx test-rise-relay-client.ts
 
-**Key Test Cases:**
-- Invalid parameters: Negative amounts, malformed addresses
-- Missing information: Incomplete commands
-- Unverified users: Transaction attempts without verification
-- Rate limiting: Rapid repeated requests
-- Large numbers: Extreme amounts and precision
-- Concurrent requests: Multiple simultaneous operations
-- Error recovery: Network failures and retries
+# Run main backend test
+npx tsx test-rise-relay-client.ts
+```
 
-### 5. `test-improved-router.ts`
-Advanced routing tests using Sherlock Think Alpha model.
+## 📊 Test Status
 
-**Features:**
-- Deep intent analysis with confidence scores
-- Entity extraction (tokens, amounts, addresses)
-- Multi-step operation handling
-- Tool chaining scenarios
-- Error diagnosis and recovery guidance
-- Conditional logic handling
+- ✅ **Backend Transaction Service**: Fully working with RISE relay client
+- ✅ **Session Key Management**: P256 key generation and signing working
+- ✅ **Permission System**: Integration with frontend permission granting
+- ⚡ **Current Focus**: Frontend permission granting workflow
 
-## Test Data
+## 🔧 Test Environment
 
-**Test Address**: `0x07b780E6D4D7177bd596e7caBf2725a471E685Dc`
-- Used consistently across all tests
-- Has transaction history in points-api
+- **Network**: RISE Testnet (Chain ID: 11155931)
+- **Test User**: `0x07b780E6D4D7177bd596e7caBf2725a471E685Dc` 
+- **Backend Signer**: `0x038AEBDbDEcd7F4604Fd6902b40BE063e5fc3f7B`
+- **Test Tokens**: MockUSD, MockToken
+- **Router**: Uniswap V2 compatible
+
+**Test Address**: `0x07b780E6D4D7177bd596e7caBf2725a471E685Dc` (Consistent across all tests)
 
 **Test Tokens**:
 - MockUSD: `0x044b54e85D3ba9ae376Aeb00eBD09F21421f7f50`
@@ -88,23 +86,12 @@ Advanced routing tests using Sherlock Think Alpha model.
 - Router: `0x6c10B45251F5D3e650bcfA9606c662E695Af97ea`
 - Factory: `0xf6A86076ce8e9A2ff628CD3a728FcC5876FA70C6`
 
-## Running Tests
+## 📝 Notes
 
-```bash
-# Install dependencies
-cd apps/tg-bot
-pnpm install
-
-# Run individual test files
-pnpm tsx tests/test-swap-prompts.ts
-pnpm tsx tests/test-query-prompts.ts
-pnpm tsx tests/test-llm-routing.ts
-pnpm tsx tests/test-edge-cases.ts
-pnpm tsx tests/test-improved-router.ts
-
-# Run all tests (create a script if needed)
-for test in tests/test-*.ts; do pnpm tsx "$test"; done
-```
+- Use `test-rise-relay-client.ts` as the primary integration test
+- "Duplicate call" errors indicate successful backend operation  
+- "Invalid precall" errors indicate permissions need to be granted via frontend
+- All archived tests are kept for historical reference and debugging context
 
 ## Environment Requirements
 

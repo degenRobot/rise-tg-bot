@@ -58,3 +58,4 @@ certs/
 *.crt
 
 apps/tg-bot/data/*
+apps/tg-bot/tests/archive/*

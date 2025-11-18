@@ -105,7 +105,7 @@ export function registerPermissionRoutes(app: Express) {
         telegramHandle: verifiedAccount.telegramHandle,
       },
       // Include session key if available from permissions
-      sessionKey: permissionsEntry?.sessionKey
+      sessionKey: (permissionsEntry as any)?.sessionKey
     });
   });
 

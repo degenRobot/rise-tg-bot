@@ -31,10 +31,10 @@ export const mintTool = tool({
   args: {
     tokenSymbol: tool.schema.enum(["MockUSD", "MockToken"]).describe("Token symbol to mint"),
   },
-  async execute(args) {
+  async execute(args, context) {
     const token = TOKENS[args.tokenSymbol];
     if (!token) {
-      return { error: "Invalid token symbol" };
+      return JSON.stringify({ error: "Invalid token symbol" });
     }
 
     const call = {
@@ -47,7 +47,7 @@ export const mintTool = tool({
       requiredPermissions: { calls: [token.address.toLowerCase()] }
     };
 
-    return {
+    return JSON.stringify({
       success: true,
       tool: "mint",
       params: {
@@ -55,7 +55,7 @@ export const mintTool = tool({
         tokenAddress: token.address
       },
       call
-    };
+    });
   }
 });
 
