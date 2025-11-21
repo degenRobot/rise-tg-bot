@@ -14,6 +14,10 @@ export default function SetupPage() {
   const [backendKeyAddress, setBackendKeyAddress] = useState<string>("");
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [permissionsComplete, setPermissionsComplete] = useState(false);
+  const [telegramDetails, setTelegramDetails] = useState<{
+    handle: string;
+    id?: string;
+  } | null>(null);
 
   // Fetch backend configuration
   useEffect(() => {
@@ -47,30 +51,56 @@ export default function SetupPage() {
 
   const handleVerificationComplete = (telegramHandle: string) => {
     console.log("✅ Verification completed for:", telegramHandle);
+    
+    // Extract Telegram ID from URL if available
+    const params = new URLSearchParams(window.location.search);
+    const telegramId = params.get('telegram_id');
+    
+    setTelegramDetails({
+      handle: telegramHandle,
+      id: telegramId || undefined,
+    });
     setVerificationComplete(true);
   };
 
-  const handlePermissionsGranted = async (result: { success: boolean; expiry: number; sessionKey: string }) => {
+  const handlePermissionsGranted = async (result: { 
+    success: boolean; 
+    expiry: number; 
+    sessionKey: string;
+    permissionDetails?: {
+      id: string;
+      keyPublicKey: string;
+      permissions: any;
+    };
+  }) => {
     if (result.success) {
       console.log("✅ Permissions granted:", result);
       
-      // Sync permissions with backend
+      // Sync permissions with backend including detailed permission data
       try {
+        const syncData = {
+          accountAddress: address,
+          backendKeyAddress: result.sessionKey,
+          expiry: result.expiry,
+          telegramId: telegramDetails?.id,
+          telegramUsername: telegramDetails?.handle,
+          permissionDetails: result.permissionDetails,
+        };
+
+        console.log("📡 Sending permission sync with details:", syncData);
+
         const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8008'}/api/permissions/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accountAddress: address,
-            backendKeyAddress: result.sessionKey,
-            expiry: result.expiry,
-          }),
+          body: JSON.stringify(syncData),
         });
 
         if (syncResponse.ok) {
-          console.log("✅ Permissions synced with backend");
+          const syncResult = await syncResponse.json();
+          console.log("✅ Permissions synced with backend:", syncResult);
           setPermissionsComplete(true);
         } else {
-          console.error("Failed to sync permissions with backend");
+          console.error("Failed to sync permissions with backend:", await syncResponse.text());
         }
       } catch (error) {
         console.error("Error syncing permissions:", error);

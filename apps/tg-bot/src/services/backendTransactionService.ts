@@ -1,6 +1,7 @@
 import { Address } from "viem";
 import { P256, Signature, Hex } from "ox";
 import { riseRelayClient, backendSessionKey } from "../config/backendRiseClient.js";
+import { executeWithBackendPermission, type Call } from "./portoExecution.js";
 
 // Types matching wallet-demo exactly
 export type TransactionCall = {
@@ -81,26 +82,52 @@ class BackendTransactionService {
   }
 
   /**
-   * Main execute function (matching useTransaction.execute exactly)
-   * This is the entry point that matches wallet-demo's execute() function
+   * Main execute function (NEW - using stored permissions)
+   * This replaces the old manual precall approach
    */
   async execute(props: TransactionProps, userAddress: Address): Promise<ExecutionResult> {
-    console.log("🚀 Backend executing transaction (matching useTransaction pattern)...");
+    console.log("🚀 Backend executing transaction (using stored permissions)...");
     const { calls, requiredPermissions } = props;
 
     try {
       await this.initializeSessionKey();
       
-      // For now, always use session key execution since we have the backend signer
-      // In wallet-demo, this would check permissions, but we'll assume permissions are granted
-      // since we're operating on behalf of users who have already linked their wallets
-      
-      const result = await this.executeWithSessionKey(calls, userAddress);
-      return {
-        success: true,
-        error: null,
-        data: { ...result, usedSessionKey: true }
-      };
+      if (!this.sessionKey) {
+        throw new Error("Session key not initialized");
+      }
+
+      // Convert calls to Porto format
+      const portoCalls: Call[] = calls.map(call => ({
+        to: call.to,
+        data: call.data,
+        value: call.value,
+      }));
+
+      // Use the new Porto execution helper
+      const result = await executeWithBackendPermission({
+        walletAddress: userAddress,
+        calls: portoCalls,
+        backendSessionKey: this.sessionKey,
+      });
+
+      if (result.success) {
+        return {
+          success: true,
+          error: null,
+          data: {
+            hash: result.callsId,
+            success: true,
+            usedSessionKey: true,
+            totalTransactions: calls.length,
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error,
+          data: null
+        };
+      }
 
     } catch (error) {
       console.error("❌ Backend transaction execution failed:", error);
@@ -113,10 +140,11 @@ class BackendTransactionService {
   }
 
   /**
-   * Execute with session key matching wallet-demo's executeWithSessionKey exactly
+   * LEGACY: Execute with session key matching wallet-demo's executeWithSessionKey exactly
    * Based on wallet-demo/packages/nextjs/wallet-playground/src/hooks/useTransaction.ts
+   * DEPRECATED: Use execute() instead, which uses stored permissions
    */
-  async executeWithSessionKey(calls: TransactionCall[], userAddress: Address): Promise<TransactionData> {
+  async executeWithSessionKeyLegacy(calls: TransactionCall[], userAddress: Address): Promise<TransactionData> {
     console.log("🔑 Executing using backend session key (wallet-demo pattern)...");
     
     if (!this.sessionKey) {

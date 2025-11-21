@@ -7,7 +7,16 @@ import { Card, CardHeader, CardContent } from "./Card";
 import { Address } from "viem";
 
 interface GrantPermissionsProps {
-  onGranted: (result: { success: boolean; expiry: number; sessionKey: string }) => void;
+  onGranted: (result: { 
+    success: boolean; 
+    expiry: number; 
+    sessionKey: string; 
+    permissionDetails?: {
+      id: string;
+      keyPublicKey: string;
+      permissions: any;
+    };
+  }) => void;
   backendKeyAddress: string;
 }
 
@@ -95,11 +104,31 @@ export function GrantPermissions({ onGranted, backendKeyAddress }: GrantPermissi
 
       console.log("✅ Grant permissions result:", grantResult);
 
-      // Notify parent component
+      // Extract permission details from result for backend sync
+      let permissionDetails = null;
+      if (grantResult && typeof grantResult === 'object') {
+        // Try to extract permission ID and details from grant result
+        const resultArray = Array.isArray(grantResult) ? grantResult : [grantResult];
+        const firstResult = resultArray[0];
+        
+        if (firstResult && firstResult.id) {
+          permissionDetails = {
+            id: firstResult.id,
+            keyPublicKey: backendKeyAddress,
+            permissions: permissions, // The permissions we granted
+          };
+          console.log("📦 Extracted permission details:", permissionDetails);
+        } else {
+          console.log("⚠️ Could not extract permission ID from grant result:", firstResult);
+        }
+      }
+
+      // Notify parent component with detailed info
       onGranted({
         success: true,
         expiry,
         sessionKey: backendKeyAddress,
+        permissionDetails, // Pass the extracted details
       });
 
       setSuccess(true);

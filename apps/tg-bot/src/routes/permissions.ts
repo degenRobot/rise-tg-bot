@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import type { Address } from "viem";
+import { P256 } from "ox";
 import { PERMISSION_TEMPLATES } from "../types/index.js";
 import { 
   createVerificationMessage, 
@@ -7,8 +8,35 @@ import {
   getVerifiedAccount,
   revokeVerification 
 } from "../services/verification.js";
+import { 
+  storePermission, 
+  findActivePermissionForBackendKey,
+  getUserPermissions,
+  getPermissionsByTelegramId,
+  cleanupExpiredPermissions,
+  debugListPermissions,
+  type StoredPermission 
+} from "../services/permissionStore.js";
 
 const backendKeyAddress = process.env.BACKEND_SIGNER_ADDRESS as Address;
+const backendPrivateKey = process.env.BACKEND_SIGNER_PRIVATE_KEY!;
+
+// Derive the P256 public key for frontend use
+function getBackendP256PublicKey(): string {
+  const publicKeyBytes = P256.getPublicKey({ 
+    privateKey: backendPrivateKey 
+  });
+  
+  // Convert to hex format
+  const keyBytes = publicKeyBytes instanceof Uint8Array ? 
+    publicKeyBytes : 
+    new Uint8Array([
+      ...publicKeyBytes.x.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16)), 
+      ...publicKeyBytes.y.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16))
+    ]);
+  
+  return `0x${Buffer.from(keyBytes).toString('hex')}`;
+}
 
 // Very naive in-memory store for prototype
 const userStore = new Map<
@@ -25,49 +53,89 @@ export function registerPermissionRoutes(app: Express) {
   // Used by frontend to render the dropdown
   app.get("/api/permissions/config", (_req: Request, res: Response) => {
     res.json({
-      backendKeyAddress,
+      backendKeyAddress: getBackendP256PublicKey(), // Return P256 public key, not EOA address
       templates: PERMISSION_TEMPLATES,
     });
   });
 
   // Called by frontend AFTER grantPermissions succeeds
   app.post("/api/permissions/sync", (req: Request, res: Response) => {
-    const { accountAddress, backendKeyAddress, expiry, telegramId, telegramUsername, telegramData } = req.body as {
-      accountAddress: Address;
-      backendKeyAddress: Address;
-      expiry: number;
-      telegramId?: string;
-      telegramUsername?: string;
-      telegramData?: any;
-    };
+    try {
+      const { accountAddress, backendKeyAddress, expiry, telegramId, telegramUsername, permissionDetails } = req.body as {
+        accountAddress: Address;
+        backendKeyAddress: Address;
+        expiry: number;
+        telegramId?: string;
+        telegramUsername?: string;
+        permissionDetails?: {
+          id: `0x${string}`;
+          keyPublicKey: string;
+          permissions?: {
+            calls?: Array<{ to?: string; signature?: string }>;
+            spend?: Array<{ limit: string; period: string; token?: string }>;
+          };
+        };
+      };
 
-    // Store by wallet address
-    userStore.set(accountAddress.toLowerCase(), {
-      accountAddress,
-      telegramId,
-      templateId: "custom", // We're using custom permissions now
-      expiry,
-    });
+      console.log("📥 Permission sync request:", {
+        accountAddress,
+        backendKeyAddress,
+        telegramId,
+        telegramUsername,
+        expiry,
+        hasPermissionDetails: !!permissionDetails,
+        permissionId: permissionDetails?.id,
+      });
 
-    // Also store by Telegram ID for easy lookup
-    if (telegramId) {
-      userStore.set(`telegram:${telegramId}`, {
+      // Store legacy format for compatibility
+      userStore.set(accountAddress.toLowerCase(), {
         accountAddress,
         telegramId,
         templateId: "custom",
         expiry,
       });
+
+      if (telegramId) {
+        userStore.set(`telegram:${telegramId}`, {
+          accountAddress,
+          telegramId,
+          templateId: "custom",
+          expiry,
+        });
+      }
+
+      // Store detailed permission data if provided
+      if (permissionDetails) {
+        storePermission({
+          walletAddress: accountAddress,
+          telegramId,
+          telegramHandle: telegramUsername,
+          permission: {
+            id: permissionDetails.id,
+            expiry,
+            keyPublicKey: permissionDetails.keyPublicKey,
+            keyType: "p256",
+            permissions: permissionDetails.permissions,
+          },
+        });
+        
+        console.log("✅ Stored detailed permission data");
+      } else {
+        console.log("⚠️  No detailed permission data provided - using legacy sync");
+      }
+
+      // Cleanup expired permissions
+      const cleaned = cleanupExpiredPermissions();
+      if (cleaned > 0) {
+        console.log(`🧹 Cleaned up ${cleaned} expired permissions during sync`);
+      }
+
+      res.json({ ok: true });
+      
+    } catch (error) {
+      console.error("❌ Permission sync error:", error);
+      res.status(500).json({ error: "Failed to sync permissions" });
     }
-
-    console.log("Synced permissions for:", {
-      accountAddress,
-      backendKeyAddress,
-      telegramId,
-      telegramUsername,
-      expiry,
-    });
-
-    res.json({ ok: true });
   });
 
   // Lookup used by Telegram bot/LLM layer
@@ -93,6 +161,9 @@ export function registerPermissionRoutes(app: Express) {
     // Also check permissions store for additional data
     const permissionsEntry = userStore.get(`telegram:${telegramId}`);
     
+    // Get detailed permissions data
+    const detailedPermissions = getPermissionsByTelegramId(telegramId);
+    
     res.json({
       accountAddress: verifiedAccount.accountAddress,
       telegramId: verifiedAccount.telegramId,
@@ -105,7 +176,18 @@ export function registerPermissionRoutes(app: Express) {
         telegramHandle: verifiedAccount.telegramHandle,
       },
       // Include session key if available from permissions
-      sessionKey: (permissionsEntry as any)?.sessionKey
+      sessionKey: (permissionsEntry as any)?.sessionKey,
+      // Include detailed permission data for backend transaction service
+      permissions: detailedPermissions ? {
+        activeCount: detailedPermissions.permissions.filter(p => p.expiry > Date.now() / 1000).length,
+        totalCount: detailedPermissions.permissions.length,
+        lastSync: detailedPermissions.lastSync,
+        // Include the most recent active permission for the backend key
+        backendPermission: findActivePermissionForBackendKey({
+          walletAddress: verifiedAccount.accountAddress,
+          backendPublicKey: backendKeyAddress, // Current backend key
+        }),
+      } : null,
     });
   });
 
@@ -215,6 +297,62 @@ export function registerPermissionRoutes(app: Express) {
       res.json({
         linked: false,
       });
+    }
+  });
+
+  // Debug: List all permissions
+  app.get("/api/permissions/debug/list", (_req: Request, res: Response) => {
+    try {
+      debugListPermissions();
+      const cleaned = cleanupExpiredPermissions();
+      res.json({ 
+        message: "Permission debug info logged to console",
+        expiredCleaned: cleaned,
+      });
+    } catch (error) {
+      console.error("Debug list error:", error);
+      res.status(500).json({ error: "Failed to list permissions" });
+    }
+  });
+
+  // Get detailed permissions for a wallet
+  app.get("/api/permissions/wallet/:address", (req: Request, res: Response) => {
+    try {
+      const { address } = req.params;
+      const permissions = getUserPermissions(address as Address);
+      
+      if (!permissions) {
+        return res.status(404).json({ error: "No permissions found for wallet" });
+      }
+      
+      const now = Date.now() / 1000;
+      const activePermissions = permissions.permissions.filter(p => p.expiry > now);
+      
+      res.json({
+        walletAddress: permissions.walletAddress,
+        telegramId: permissions.telegramId,
+        telegramHandle: permissions.telegramHandle,
+        lastSync: new Date(permissions.lastSync),
+        totalPermissions: permissions.permissions.length,
+        activePermissions: activePermissions.length,
+        permissions: permissions.permissions.map(p => ({
+          id: p.id,
+          keyPublicKey: p.keyPublicKey.slice(0, 20) + "...",
+          expiry: new Date(p.expiry * 1000),
+          isActive: p.expiry > now,
+          callsCount: p.permissions?.calls?.length || 0,
+          spendCount: p.permissions?.spend?.length || 0,
+          grantedAt: new Date(p.grantedAt),
+        })),
+        // Check if there's an active permission for current backend key
+        hasBackendPermission: !!findActivePermissionForBackendKey({
+          walletAddress: address as Address,
+          backendPublicKey: backendKeyAddress,
+        }),
+      });
+    } catch (error) {
+      console.error("Get wallet permissions error:", error);
+      res.status(500).json({ error: "Failed to get wallet permissions" });
     }
   });
 
