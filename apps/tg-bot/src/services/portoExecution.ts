@@ -1,7 +1,9 @@
 import type { Address, Hex } from "viem";
 import { riseRelayClient } from "../config/backendRiseClient.js";
-import { findActivePermissionForBackendKey } from "./permissionStore.js";
+import { findActivePermissionForBackendKey, findPermissionForBackendKey } from "./permissionStore.js";
 import { P256, Signature } from "ox";
+import * as RelayService from "./relay.js";
+import * as Key from "rise-wallet/viem/Key";
 
 export type Call = {
   to: Address;
@@ -9,16 +11,24 @@ export type Call = {
   value?: bigint;
 };
 
+export type ExecutionErrorType = 
+  | "expired_session" 
+  | "unauthorized" 
+  | "no_permission" 
+  | "network_error" 
+  | "unknown";
+
 export interface ExecutionResult {
   success: boolean;
   callsId: string;
   transactionHashes?: string[];
   error?: any;
+  errorType?: ExecutionErrorType;
 }
 
 /**
  * Execute transactions using stored permissions via Porto relay
- * This follows the pattern from the fix plan - use capabilities.permissions.id
+ * Uses the refactored RelayService for robust handling
  */
 export async function executeWithBackendPermission(params: {
   walletAddress: Address;
@@ -39,111 +49,86 @@ export async function executeWithBackendPermission(params: {
 
   try {
     // 1) Find the active permission for this wallet + backend key
-    const permission = findActivePermissionForBackendKey({
+    let permission = findActivePermissionForBackendKey({
       walletAddress,
       backendPublicKey: backendSessionKey.publicKey,
     });
 
     if (!permission) {
+      // Check if it's expired
+      const expiredPermission = findPermissionForBackendKey({
+        walletAddress,
+        backendPublicKey: backendSessionKey.publicKey,
+      });
+
+      if (expiredPermission && expiredPermission.expiry <= Date.now() / 1000) {
+        throw new Error("Session key expired");
+      }
+      
       throw new Error(`No active permission found for backend key ${backendSessionKey.publicKey.slice(0, 10)}... on wallet ${walletAddress}`);
     }
 
     console.log(`✅ Found active permission: ${permission.id}`);
-    console.log(`   Expires: ${new Date(permission.expiry * 1000)}`);
-    console.log(`   Calls allowed: ${permission.permissions?.calls?.length || 0}`);
-    console.log(`   Spend limits: ${permission.permissions?.spend?.length || 0}`);
 
-    // 2) Prepare calls using the permission ID (this is the key fix!)
-    console.log("📋 Calling wallet_prepareCalls with permission ID...");
-    
-    const prepareParams = [{
-      address: walletAddress,
-      from: walletAddress, // Required from field
-      chainId: "0x" + (11155931).toString(16), // RISE Testnet chain ID in hex
-      calls: calls.map(call => ({
-        to: call.to,
-        data: call.data,
-        value: call.value ? `0x${call.value.toString(16)}` : undefined,
+    // 2) Prepare calls using RelayService
+    console.log("📋 Preparing calls via RelayService...");
+
+    // Construct the signing key
+    const signingKey = Key.fromP256({
+      privateKey: backendSessionKey.privateKey as Hex,
+      role: 'session',
+      expiry: permission.expiry || 0,
+    });
+
+    const prepareResult = await RelayService.prepareCalls(riseRelayClient as any, {
+      account: { address: walletAddress } as any, // Minimal account object
+      chain: riseRelayClient.chain!,
+      calls: calls.map(c => ({
+        to: c.to,
+        data: c.data,
+        value: c.value,
       })),
-      capabilities: {
-        // This is the crucial fix - reference the existing permission by ID
-        permissions: {
-          id: permission.id,
-        },
-        // Include required meta field
-        meta: {
-          feePayer: walletAddress, // User pays fees
-          feeToken: "0x0000000000000000000000000000000000000000", // ETH as fee token
-        },
-      },
-      key: {
-        type: backendSessionKey.type,
-        publicKey: backendSessionKey.publicKey,
-        prehash: false, // Boolean indicating whether to pre-hash message
-      },
-    }];
-
-    console.log("📡 Prepare params:", {
-      address: walletAddress,
-      callsCount: calls.length,
+      key: signingKey,
       permissionId: permission.id,
-      keyType: backendSessionKey.type,
-      keyPublic: backendSessionKey.publicKey.slice(0, 20) + "...",
+      // We don't need to pass authorizeKeys unless we're authorizing NEW keys
+      // We are using an EXISTING key
     });
 
-    const prepared = await (riseRelayClient as any).request({
-      method: "wallet_prepareCalls",
-      params: prepareParams,
-    });
+    const { context, digest } = prepareResult;
 
-    console.log("✅ Prepare calls response keys:", prepared ? Object.keys(prepared) : "null");
-    
-    const { context, digest } = prepared;
-    
     if (!digest) {
-      throw new Error("No digest returned from wallet_prepareCalls");
+      throw new Error("No digest returned from prepareCalls");
     }
 
     console.log(`📝 Digest to sign: ${digest}`);
 
-    // 3) Sign the digest using backend P256 key
+    // 3) Sign the digest
     console.log("✍️ Signing with backend P256 key...");
     
-    const digestBytes = digest.startsWith('0x') ? 
-      digest.slice(2) : 
-      digest;
-
-    const signature = Signature.toHex(
-      P256.sign({
-        payload: digest as `0x${string}`,
-        privateKey: backendSessionKey.privateKey as Address,
-      })
-    );
+    // We can use Key.sign from rise-wallet, which handles wrapping if needed
+    // But RelayService.prepareCalls might return a digest that expects raw signature?
+    // rise-wallet's prepareCalls returns a digest that should be signed.
+    // Let's use Key.sign to be safe and consistent with rise-wallet patterns
+    
+    const signature = await Key.sign(signingKey, {
+      payload: digest,
+      address: null, // Not used for P256 usually, or handled by library
+    });
 
     console.log(`✅ Generated signature: ${signature.slice(0, 20)}...`);
 
-    // 4) Send the prepared calls
-    console.log("📤 Calling wallet_sendPreparedCalls...");
-    
-    const sendParams = [{
+    // 4) Send prepared calls
+    console.log("📤 Sending prepared calls...");
+
+    const result = await RelayService.sendPreparedCalls(riseRelayClient as any, {
       context,
       signature,
-      // Include key information
-      key: {
-        type: backendSessionKey.type,
-        publicKey: backendSessionKey.publicKey,
-        prehash: false,
-      },
-    }];
-
-    const result = await (riseRelayClient as any).request({
-      method: "wallet_sendPreparedCalls", 
-      params: sendParams,
+      key: signingKey,
     });
 
     console.log("📦 Send prepared calls result:", result);
 
-    // Process result (Porto returns different formats)
+    // Process result
     let callsId = "unknown";
     let transactionHashes: string[] = [];
 
@@ -157,14 +142,12 @@ export async function executeWithBackendPermission(params: {
         transactionHashes = [firstResult.hash];
       }
     } else if (result && typeof result === 'object') {
-      callsId = result.id || result.callsId || result.hash || "unknown";
-      transactionHashes = result.transactionHashes || (result.hash ? [result.hash] : []);
+      callsId = (result as any).id || (result as any).callsId || (result as any).hash || "unknown";
+      transactionHashes = (result as any).transactionHashes || ((result as any).hash ? [(result as any).hash] : []);
     }
 
     console.log("✅ Backend permission execution successful!");
-    console.log(`   Calls ID: ${callsId}`);
-    console.log(`   Transaction hashes: ${transactionHashes.length}`);
-
+    
     return {
       success: true,
       callsId,
@@ -174,22 +157,31 @@ export async function executeWithBackendPermission(params: {
   } catch (error) {
     console.error("❌ Backend permission execution failed:", error);
     
-    // Provide helpful error context
     let errorMessage = error instanceof Error ? error.message : String(error);
-    
-    if (errorMessage.includes("Invalid precall")) {
-      errorMessage = `Invalid precall: The stored permission may not match the transaction structure. Permission ID: ${findActivePermissionForBackendKey({
-        walletAddress,
-        backendPublicKey: backendSessionKey.publicKey,
-      })?.id || 'not found'}`;
-    } else if (errorMessage.includes("duplicate call")) {
-      errorMessage = `Duplicate call detected. This may indicate a precall consumption issue.`;
+    let errorType: ExecutionErrorType = "unknown";
+
+    if (errorMessage.includes("Session key expired")) {
+      errorType = "expired_session";
+    } else if (errorMessage.includes("No active permission found")) {
+      errorType = "no_permission";
+    } else if (errorMessage.includes("Unauthorized") || errorMessage.includes("Invalid precall") || errorMessage.includes("permission mismatch")) {
+      errorType = "unauthorized";
+       // Improve error message for unauthorized
+       if (errorMessage.includes("Invalid precall")) {
+        errorMessage = `Invalid precall or permission mismatch. Permission ID: ${findActivePermissionForBackendKey({
+          walletAddress,
+          backendPublicKey: backendSessionKey.publicKey,
+        })?.id}`;
+      }
+    } else if (errorMessage.includes("Network") || errorMessage.includes("fetch")) {
+      errorType = "network_error";
     }
 
     return {
       success: false,
       callsId: "error",
       error: errorMessage,
+      errorType,
     };
   }
 }

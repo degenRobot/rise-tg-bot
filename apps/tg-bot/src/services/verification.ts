@@ -1,25 +1,8 @@
-import { type Address, type Hex, createPublicClient, http, hashMessage, getAddress } from "viem";
+import { type Address, type Hex, hashMessage, getAddress } from "viem";
 import { verifyMessage, verifyHash } from "viem/actions";
 import { z } from "zod";
-
-// RISE Testnet chain configuration
-const riseTestnet = {
-  id: 11155931,
-  name: 'RISE Testnet',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'ETH',
-    symbol: 'ETH',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://testnet.riselabs.xyz'],
-    },
-  },
-  blockExplorers: {
-    default: { name: 'Explorer', url: 'https://explorer.testnet.riselabs.xyz' },
-  },
-} as const;
+import { riseRelayClient } from "../config/backendRiseClient.js";
+import { storage } from './storage.js';
 
 // Verification message schema
 export const VerificationMessageSchema = z.object({
@@ -31,7 +14,7 @@ export const VerificationMessageSchema = z.object({
 
 export type VerificationMessage = z.infer<typeof VerificationMessageSchema>;
 
-// Database schema for verified links (conceptual)
+// Verified link schema
 export interface VerifiedLink {
   id: string;
   telegramId: string;
@@ -42,10 +25,6 @@ export interface VerifiedLink {
   messageHash: string;
   active: boolean;
 }
-
-import { storage } from './storage.js';
-
-// Removed in-memory store - now using file storage
 
 /**
  * Generate a verification message for the user to sign
@@ -70,19 +49,10 @@ export function createVerificationMessage(
   return { message, data };
 }
 
-// Create viem client for verification
-function createVerificationClient() {
-  return createPublicClient({
-    chain: riseTestnet,
-    transport: http("https://testnet.riselabs.xyz")
-  });
-}
-
 // Check if address is a smart contract
 async function isContract(address: Address): Promise<boolean> {
   try {
-    const client = createVerificationClient();
-    const code = await client.getCode({ address });
+    const code = await riseRelayClient.getBytecode({ address });
     return !!code && code !== '0x';
   } catch (error) {
     console.error("Failed to check if address is contract:", error);
@@ -90,18 +60,17 @@ async function isContract(address: Address): Promise<boolean> {
   }
 }
 
-// Verify signature using Porto's approach - supports both EOA and smart wallets
+// Verify signature using viem's universal verification
 async function verifySignatureWithViem(
   address: Address,
   message: string,
   signature: Hex
 ): Promise<boolean> {
   try {
-    const client = createVerificationClient();
-    
     console.log("Verifying with viem's verifyMessage...");
-    const isValid = await verifyMessage(client, {
-      address: getAddress(address), // Ensure proper checksum
+    // Use public client actions
+    const isValid = await verifyMessage(riseRelayClient, {
+      address: getAddress(address),
       message,
       signature
     });
@@ -114,10 +83,9 @@ async function verifySignatureWithViem(
     // Fallback to hash-based verification for complex signatures
     try {
       console.log("Trying fallback hash verification...");
-      const client = createVerificationClient();
       const messageHash = hashMessage(message);
       
-      const isValid = await verifyHash(client, {
+      const isValid = await verifyHash(riseRelayClient, {
         address: getAddress(address),
         hash: messageHash,
         signature
@@ -147,8 +115,7 @@ export async function verifyAndLinkAccount(params: {
       address: params.address,
       telegramHandle: params.telegramHandle,
       telegramId: params.telegramId,
-      signatureLength: params.signature.length,
-      signaturePreview: params.signature.substring(0, 50) + "..."
+      signatureLength: params.signature.length
     });
 
     // Check if this is a smart wallet or EOA
@@ -157,20 +124,18 @@ export async function verifyAndLinkAccount(params: {
 
     let isValid = false;
 
-    // Use viem's built-in verification which handles both EOA and smart wallets
-    console.log("Using viem's universal signature verification...");
+    // Use viem's built-in verification
     isValid = await verifySignatureWithViem(
       params.address,
       params.message,
       params.signature
     );
     
-    // Temporary fallback for RISE wallet signatures while we debug verification
+    // Temporary fallback for RISE wallet signatures while debugging
     if (!isValid && isSmartWallet && params.signature.length > 1000) {
-      console.log("⚠️  Verification failed for complex smart wallet signature");
+      console.log("⚠️ Verification failed for complex smart wallet signature");
       console.log("🔄 Using temporary fallback validation for RISE wallet signatures...");
       
-      // Basic validation checks for RISE wallet signatures
       const hasValidFormat = (
         params.signature.startsWith('0x') && 
         params.signature.length > 1000 &&
@@ -185,12 +150,9 @@ export async function verifyAndLinkAccount(params: {
       
       if (hasValidFormat && hasValidMessage) {
         console.log("✅ Fallback validation passed - treating as valid RISE wallet signature");
-        console.log("📝 Note: This is a temporary measure while we implement proper verification");
         isValid = true;
       } else {
         console.log("❌ Fallback validation failed");
-        console.log("- Valid format:", hasValidFormat);
-        console.log("- Valid message content:", hasValidMessage);
       }
     }
 
@@ -202,9 +164,7 @@ export async function verifyAndLinkAccount(params: {
 
     // Parse and validate the message content
     const messageLines = params.message.split('\n');
-    console.log("Message lines:", messageLines);
     const handleMatch = messageLines[2]?.match(/@(\w+) \(ID: (\d+)\)/);
-    console.log("Handle match:", handleMatch);
     
     if (!handleMatch) {
       console.error("Failed to parse message - no match found");

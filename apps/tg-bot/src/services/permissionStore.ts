@@ -149,6 +149,33 @@ export function findActivePermissionForBackendKey(params: {
 }
 
 /**
+ * Find permission for backend key (ignoring expiry)
+ */
+export function findPermissionForBackendKey(params: {
+  walletAddress: Address;
+  backendPublicKey: string;
+}): StoredPermission | null {
+  const { walletAddress, backendPublicKey } = params;
+  const allUsers = readPermissionsFile();
+  
+  const userRecord = allUsers.find(
+    u => u.walletAddress.toLowerCase() === walletAddress.toLowerCase()
+  );
+  
+  if (!userRecord) return null;
+  
+  // Find permissions for the backend key
+  const permissions = userRecord.permissions.filter(p => 
+    p.keyPublicKey.toLowerCase() === backendPublicKey.toLowerCase()
+  );
+  
+  if (permissions.length === 0) return null;
+  
+  // Return the most recent one
+  return permissions.sort((a, b) => b.grantedAt - a.grantedAt)[0];
+}
+
+/**
  * Get all permissions for a user
  */
 export function getUserPermissions(walletAddress: Address): UserPermissions | null {

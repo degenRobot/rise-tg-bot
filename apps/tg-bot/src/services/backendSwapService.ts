@@ -2,6 +2,7 @@ import { Address, encodeFunctionData, parseUnits } from "viem";
 import { backendTransactionService, TransactionCall } from "./backendTransactionService.js";
 import { MintableERC20ABI } from "../abi/erc20.js";
 import { UniswapV2RouterABI } from "../abi/swap.js";
+import { ExecutionErrorType } from "./portoExecution.js";
 
 // Token configuration (matching our testnet setup)
 export const TOKENS = {
@@ -32,6 +33,7 @@ export type SwapResult = {
   success: boolean;
   data: any;
   error: any;
+  errorType?: ExecutionErrorType;
 };
 
 /**
@@ -84,7 +86,8 @@ class BackendSwapService {
         return {
           success: false,
           data: null,
-          error: result.error
+          error: result.error,
+          errorType: result.errorType
         };
       }
 

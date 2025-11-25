@@ -2,10 +2,11 @@ import OpenAI from "openai";
 import { apiCaller } from "../tools/apiCaller.js";
 import { eventWatcher } from "../tools/eventWatcher.js";
 import { getVerifiedAccount } from "../services/verification.js";
-import { backendSwapService } from "../services/backendSwapService.js";
+import { backendSwapService, TOKENS } from "../services/backendSwapService.js";
 import { backendTransactionService } from "../services/backendTransactionService.js";
 import { z } from "zod";
-import { Address, parseUnits } from "viem";
+import { Address, parseUnits, encodeFunctionData } from "viem";
+import { MintableERC20ABI } from "../abi/erc20.js";
 
 // OpenRouter configuration
 const openai = new OpenAI({
@@ -93,6 +94,17 @@ const ToolCallSchema = z.discriminatedUnion("tool", [
 
 type ToolCall = z.infer<typeof ToolCallSchema>;
 
+function getErrorResponse(errorType: string | undefined, errorMsg: any): string {
+  if (errorType === 'expired_session') {
+    return `⚠️ Your session key has expired. Please renew your permissions:\nhttps://rise-bot.com/grant`;
+  } else if (errorType === 'no_permission') {
+    return `⚠️ You haven't granted permission for this action yet. Please grant permissions:\nhttps://rise-bot.com/grant`;
+  } else if (errorType === 'unauthorized') {
+    return `⛔ Unauthorized: You don't have the required permissions for this action. Please update your permissions:\nhttps://rise-bot.com/grant`;
+  }
+  return `❌ Transaction failed: ${errorMsg instanceof Error ? errorMsg.message : String(errorMsg)}`;
+}
+
 export function createLlmRouter() {
   return {
     async handleMessage(opts: { 
@@ -121,7 +133,7 @@ export function createLlmRouter() {
                 Transfer tokens:
                 {"tool": "transfer", "params": {"tokenSymbol": "RISE"|"MockUSD"|"MockToken", "to": "0x123...", "amount": "10.5"}}
                 
-                Mint tokens:
+                Mint tokens (mints test tokens):
                 {"tool": "mint", "params": {"tokenSymbol": "MockUSD"|"MockToken"}}
                 
                 Get balances:
@@ -261,17 +273,86 @@ export function createLlmRouter() {
         if (parsed.tool === "mint") {
           console.log(`🪙 Executing mint transaction for ${parsed.params.tokenSymbol}`);
           
-          // For now, return a message since minting is not implemented in new pattern
-          // TODO: Implement minting service following wallet-demo pattern
-          return `🪙 Mint function is being updated to use the new wallet-demo pattern.\n\nPlease try again shortly, or use the swap function which is ready!`;
+          const token = TOKENS[parsed.params.tokenSymbol];
+          if (!token) {
+            return `❌ Unknown token: ${parsed.params.tokenSymbol}. Available: ${Object.keys(TOKENS).join(", ")}`;
+          }
+
+          try {
+            // Use mintOnce() which mints a fixed amount (usually 100) to msg.sender
+            const calls = [{
+              to: token.address,
+              data: encodeFunctionData({
+                abi: MintableERC20ABI,
+                functionName: "mintOnce",
+                args: [],
+              }),
+            }];
+
+            const result = await backendTransactionService.execute({
+              calls,
+              requiredPermissions: { calls: [token.address] }
+            }, userAddress as Address);
+
+            if (result.success) {
+               return `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!\n\nTransaction Hash: ${result.data?.hash || "unknown"}`;
+            } else {
+               return getErrorResponse(result.errorType, result.error);
+            }
+          } catch(error) {
+            console.error("Mint error:", error);
+            return `❌ Mint execution error: ${error instanceof Error ? error.message : String(error)}`;
+          }
         }
 
         if (parsed.tool === "transfer") {
-          console.log(`💸 Executing transfer of ${parsed.params.amount} ${parsed.params.tokenSymbol}`);
+          console.log(`💸 Executing transfer of ${parsed.params.amount} ${parsed.params.tokenSymbol} to ${parsed.params.to}`);
           
-          // For now, return a message since transfer is not implemented in new pattern  
-          // TODO: Implement transfer service following wallet-demo pattern
-          return `💸 Transfer function is being updated to use the new wallet-demo pattern.\n\nPlease try again shortly, or use the swap function which is ready!`;
+          try {
+            let calls = [];
+            
+            if (parsed.params.tokenSymbol === "RISE") {
+              // Native transfer
+              calls.push({
+                to: parsed.params.to as Address,
+                value: parseUnits(parsed.params.amount, 18), // RISE has 18 decimals
+                data: "0x" as `0x${string}`,
+              });
+            } else {
+              // ERC20 Transfer
+              const token = TOKENS[parsed.params.tokenSymbol as keyof typeof TOKENS];
+              if (!token) {
+                return `❌ Unknown token: ${parsed.params.tokenSymbol}`;
+              }
+              
+              calls.push({
+                to: token.address,
+                data: encodeFunctionData({
+                  abi: MintableERC20ABI,
+                  functionName: "transfer",
+                  args: [parsed.params.to as Address, parseUnits(parsed.params.amount, token.decimals)],
+                }),
+              });
+            }
+
+            const result = await backendTransactionService.execute({
+              calls,
+              // For transfers, we need permission to call the token (or any contract for RISE transfer?)
+              // Porto permissions for RISE transfer? It's a call with value.
+              requiredPermissions: { 
+                calls: parsed.params.tokenSymbol === "RISE" ? [] : [TOKENS[parsed.params.tokenSymbol as keyof typeof TOKENS].address] 
+              }
+            }, userAddress as Address);
+
+            if (result.success) {
+               return `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!\n\nTransaction Hash: ${result.data?.hash || "unknown"}`;
+            } else {
+               return getErrorResponse(result.errorType, result.error);
+            }
+          } catch(error) {
+            console.error("Transfer error:", error);
+            return `❌ Transfer execution error: ${error instanceof Error ? error.message : String(error)}`;
+          }
         }
 
         if (parsed.tool === "swap") {
@@ -288,7 +369,7 @@ export function createLlmRouter() {
             });
 
             if (!swapResult.success) {
-              return `❌ Swap transaction failed: ${swapResult.error?.message || swapResult.error}`;
+              return getErrorResponse(swapResult.errorType, swapResult.error || swapResult.error?.message);
             }
 
             const totalTxs = swapResult.data?.totalTransactions || 1;

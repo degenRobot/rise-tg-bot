@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { useBackendPermissions } from "../hooks/useBackendPermissions";
 import { Chains } from "rise-wallet";
-import { PERMISSION_ITEMS, DEFAULT_SELECTIONS } from "../config/permissions";
-import { Card, CardHeader, CardContent, CardFooter } from "../components/Card";
+import { DEFAULT_SELECTIONS, PERMISSION_ITEMS } from "../config/permissions";
+import { Card, CardHeader, CardContent } from "../components/Card";
 import { Button } from "../components/Button";
 import { ActivePermissions } from "../components/ActivePermissions";
 import { TelegramVerification } from "../components/TelegramVerification";
-import { formatDistanceToNow } from "date-fns";
+import { PermissionSelector } from "../components/PermissionSelector";
 
 interface TelegramUser {
   id: number;
@@ -89,6 +89,15 @@ export default function Home() {
     );
   };
   
+  const handleToggleAll = (type: "calls" | "spend", value: boolean) => {
+    const items = PERMISSION_ITEMS[type].map(item => item.id);
+    if (type === "calls") {
+      setSelectedCalls(value ? items : []);
+    } else {
+      setSelectedSpend(value ? items : []);
+    }
+  };
+  
   const handleGrantPermissions = async () => {
     try {
       setError("");
@@ -98,7 +107,6 @@ export default function Home() {
       if (chain?.id !== Chains.riseTestnet.id) {
         console.log("Switching to RISE testnet...");
         await switchChain({ chainId: Chains.riseTestnet.id });
-        // Wait a bit for the chain switch to complete
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
@@ -153,21 +161,11 @@ export default function Home() {
       setError("Failed to link Telegram account");
     }
   };
-  
-  const toggleAll = (type: "calls" | "spend", value: boolean) => {
-    const items = PERMISSION_ITEMS[type].map(item => item.id);
-    if (type === "calls") {
-      setSelectedCalls(value ? items : []);
-    } else {
-      setSelectedSpend(value ? items : []);
-    }
-  };
 
-  // Determine current step - start with 1 to avoid hydration mismatch
+  // Determine current step
   const [currentStep, setCurrentStep] = useState(1);
   
   useEffect(() => {
-    // Update step based on current state
     if (!isConnected) {
       setCurrentStep(1);
     } else if (!hasGrantedPermissions) {
@@ -179,122 +177,103 @@ export default function Home() {
     }
   }, [isConnected, hasGrantedPermissions, telegramUser]);
 
-  // Show loading state during hydration
   if (!mounted) {
-    return (
-      <main className="flex min-h-screen flex-col items-center p-8">
-        <div className="max-w-4xl w-full space-y-6">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">RISE Telegram Bot</h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Loading...
-            </p>
-          </div>
-        </div>
-      </main>
-    );
+    return null; // Return null or skeletal loader
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-8">
-      <div className="max-w-4xl w-full space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">RISE Telegram Bot</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Connect your wallet, grant permissions, and link your Telegram account
+    <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
+      <div className="max-w-3xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl mb-2">
+            <span className="text-3xl">🤖</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-[var(--foreground)]">
+            RISE Telegram Bot
+          </h1>
+          <p className="text-lg text-[var(--muted)] max-w-2xl mx-auto">
+            Connect your wallet and link your Telegram account to start using the bot for transactions.
           </p>
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            <div className={`flex items-center ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300'}`}>
-                1
+        <div className="flex items-center justify-center w-full max-w-md mx-auto mb-12">
+          {[1, 2, 3].map((step) => {
+            const isActive = currentStep >= step;
+            const isCompleted = currentStep > step;
+            
+            return (
+              <div key={step} className="flex items-center w-full last:w-auto">
+                <div className={`
+                  flex items-center justify-center w-10 h-10 rounded-full font-bold transition-all duration-300
+                  ${isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "bg-gray-200 dark:bg-gray-700 text-gray-500"}
+                `}>
+                  {isCompleted ? "✓" : step}
+                </div>
+                {step < 3 && (
+                  <div className={`flex-1 h-1 mx-2 rounded-full transition-colors duration-300 ${isActive && currentStep > step ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"}`} />
+                )}
               </div>
-              <span className="ml-2 hidden sm:inline">Connect Wallet</span>
-            </div>
-            <div className={`w-16 h-0.5 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`} />
-            <div className={`flex items-center ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300'}`}>
-                2
-              </div>
-              <span className="ml-2 hidden sm:inline">Grant Permissions</span>
-            </div>
-            <div className={`w-16 h-0.5 ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`} />
-            <div className={`flex items-center ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300'}`}>
-                3
-              </div>
-              <span className="ml-2 hidden sm:inline">Link Telegram</span>
-            </div>
-          </div>
+            );
+          })}
         </div>
         
         {/* Step 1: Wallet Connection */}
-        <Card>
+        <Card className={`transition-all duration-300 ${currentStep === 1 ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900" : "opacity-80 hover:opacity-100"}`}>
           <CardHeader>
-            <h2 className="text-xl font-semibold">1. Connect Your RISE Wallet</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-bold">1</div>
+              <h2 className="text-xl font-semibold">Connect Wallet</h2>
+            </div>
           </CardHeader>
           <CardContent>
             {!isConnected ? (
-              <>
+              <div className="space-y-6 text-center py-4">
+                <p className="text-[var(--muted)]">
+                  Connect your RISE Smart Wallet to get started.
+                </p>
                 {connectors.length === 0 ? (
-                  <div className="text-center space-y-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      RISE Wallet extension not detected
-                    </p>
-                    <a
-                      href="https://chromewebstore.google.com/detail/rise-wallet/hbbplkfdlpkdgclapcfmkdfohjfgcokj"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block"
-                    >
-                      <Button className="w-full">
-                        Install RISE Wallet Extension
-                      </Button>
-                    </a>
-                    <p className="text-xs text-gray-500">
-                      After installing, refresh this page
-                    </p>
-                  </div>
+                  <a
+                    href="https://chromewebstore.google.com/detail/rise-wallet/hbbplkfdlpkdgclapcfmkdfohjfgcokj"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block w-full sm:w-auto"
+                  >
+                    <Button size="lg" className="w-full sm:w-auto">
+                      Install RISE Wallet
+                    </Button>
+                  </a>
                 ) : (
                   <Button
                     onClick={async () => {
-                      try {
-                        const portoConnector = connectors.find((c) => c.id === "xyz.ithaca.porto");
-                        if (portoConnector) {
-                          await connect({ connector: portoConnector });
-                        }
-                      } catch (error) {
-                        console.error("Connection error:", error);
-                      }
+                      const portoConnector = connectors.find((c) => c.id === "xyz.ithaca.porto");
+                      if (portoConnector) await connect({ connector: portoConnector });
                     }}
-                    className="w-full"
+                    size="lg"
+                    className="w-full sm:w-auto min-w-[200px]"
                   >
-                    Connect Wallet
+                    Connect RISE Wallet
                   </Button>
                 )}
-              </>
+              </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-green-600">✓ Connected</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {address?.slice(0, 6)}...{address?.slice(-4)}
-                  </p>
-                  {chain && (
-                    <p className="text-xs text-gray-500">
-                      Chain: {chain.name} ({chain.id})
+              <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/10 p-4 rounded-lg border border-green-100 dark:border-green-900/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <div>
+                    <p className="font-medium text-green-900 dark:text-green-100">Connected</p>
+                    <p className="text-sm text-green-700 dark:text-green-300 font-mono">
+                      {address?.slice(0, 6)}...{address?.slice(-4)}
                     </p>
-                  )}
+                  </div>
                 </div>
                 <Button
-                  onClick={() => {
-                    disconnect();
-                  }}
-                  variant="secondary"
+                  onClick={() => disconnect()}
+                  variant="outline"
                   size="sm"
+                  className="border-green-200 hover:bg-green-100 text-green-800 dark:border-green-800 dark:hover:bg-green-900/50 dark:text-green-200"
                 >
                   Disconnect
                 </Button>
@@ -303,155 +282,89 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Active Permissions */}
+        {/* Active Permissions Display */}
         {isConnected && permissions.length > 0 && (
-          <ActivePermissions
-            permissions={permissions.map(p => ({
-              id: p.id,
-              key: {
-                publicKey: p.key.publicKey,
-                type: p.key.type,
-              },
-              expiry: p.expiry,
-              permissions: p.permissions ? {
-                calls: p.permissions.calls ? p.permissions.calls.map(c => ({
-                  to: c.to as string | undefined,
-                  signature: c.signature as string | undefined,
-                })) : undefined,
-                spend: p.permissions.spend ? p.permissions.spend.map(s => ({
-                  limit: s.limit.toString(),
-                  period: s.period as string,
-                  token: s.token as string | undefined,
-                })) : undefined,
-              } : undefined,
-            }))}
-            onRevoke={revokePermission}
-            backendKeyAddress={backendKeyAddress}
-          />
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ActivePermissions
+              permissions={permissions.map(p => ({
+                id: p.id,
+                key: {
+                  publicKey: p.key.publicKey,
+                  type: p.key.type,
+                },
+                expiry: p.expiry,
+                permissions: p.permissions ? {
+                  calls: p.permissions.calls ? p.permissions.calls.map(c => ({
+                    to: c.to as string | undefined,
+                    signature: c.signature as string | undefined,
+                  })) : undefined,
+                  spend: p.permissions.spend ? p.permissions.spend.map(s => ({
+                    limit: s.limit.toString(),
+                    period: s.period as string,
+                    token: s.token as string | undefined,
+                  })) : undefined,
+                } : undefined,
+              }))}
+              onRevoke={revokePermission}
+              backendKeyAddress={backendKeyAddress}
+            />
+          </div>
         )}
 
         {/* Step 2: Permission Configuration */}
         {isConnected && (
-          <Card className={!hasGrantedPermissions ? 'border-blue-500' : ''}>
+          <Card className={`transition-all duration-300 ${currentStep === 2 ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900 shadow-lg" : ""}`}>
             <CardHeader>
-              <h2 className="text-xl font-semibold">2. Configure Bot Permissions</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Select which actions the bot can perform on your behalf
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!hasGrantedPermissions ? (
-                <>
-                  {/* Function Calls */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium">Allowed Functions</h3>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleAll("calls", true)}
-                        >
-                          Select All
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleAll("calls", false)}
-                        >
-                          Clear All
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {PERMISSION_ITEMS.calls.map(item => (
-                        <label
-                          key={item.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedCalls.includes(item.id)}
-                            onChange={() => handleCallToggle(item.id)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                          />
-                          <span className="flex-1">{item.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Spending Limits */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium">Spending Limits</h3>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleAll("spend", true)}
-                        >
-                          Select All
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleAll("spend", false)}
-                        >
-                          Clear All
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {PERMISSION_ITEMS.spend.map(item => (
-                        <label
-                          key={item.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSpend.includes(item.id)}
-                            onChange={() => handleSpendToggle(item.id)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                          />
-                          <span className="flex-1">{item.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Expiry */}
-                  <div>
-                    <h3 className="font-medium mb-3">Permission Expiry</h3>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        value={expiryDays}
-                        onChange={(e) => setExpiryDays(Number(e.target.value))}
-                        min={1}
-                        max={365}
-                        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                      />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">days</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleGrantPermissions}
-                    disabled={isGranting || (selectedCalls.length === 0 && selectedSpend.length === 0)}
-                    className="w-full"
-                  >
-                    {isGranting ? "Granting..." : "Grant Permissions"}
-                  </Button>
-
-                  {error && !success && (
-                    <p className="text-red-500 text-sm mt-2">{error}</p>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${hasGrantedPermissions ? "bg-green-100 text-green-600" : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"}`}>
+                  {hasGrantedPermissions ? "✓" : "2"}
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Grant Permissions</h2>
+                  {!hasGrantedPermissions && (
+                    <p className="text-sm text-[var(--muted)] font-normal mt-0.5">
+                      Authorize the bot to act on your behalf
+                    </p>
                   )}
-                </>
+                </div>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {!hasGrantedPermissions ? (
+                <div className="space-y-8">
+                  <PermissionSelector
+                    selectedCalls={selectedCalls}
+                    selectedSpend={selectedSpend}
+                    onCallToggle={handleCallToggle}
+                    onSpendToggle={handleSpendToggle}
+                    onToggleAll={handleToggleAll}
+                    expiryDays={expiryDays}
+                    setExpiryDays={setExpiryDays}
+                  />
+
+                  <div className="pt-4">
+                    <Button
+                      onClick={handleGrantPermissions}
+                      disabled={isGranting || (selectedCalls.length === 0 && selectedSpend.length === 0)}
+                      className="w-full py-4 text-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all"
+                      size="lg"
+                      isLoading={isGranting}
+                    >
+                      {isGranting ? "Granting Permissions..." : "Grant Permissions"}
+                    </Button>
+                    {error && !success && (
+                      <p className="text-red-500 text-sm mt-3 text-center bg-red-50 dark:bg-red-900/10 p-2 rounded-lg border border-red-100">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-green-600 font-medium">✓ Permissions Granted</p>
-                  <p className="text-sm text-gray-600 mt-2">
+                <div className="text-center py-6 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/20">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 dark:text-green-400 text-xl">✓</div>
+                  <p className="text-green-700 dark:text-green-300 font-medium">Permissions Granted</p>
+                  <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">
                     Bot has permission to perform selected actions
                   </p>
                 </div>
@@ -462,27 +375,30 @@ export default function Home() {
 
         {/* Step 3: Telegram Connection */}
         {isConnected && hasGrantedPermissions && (
-          <Card className={!telegramUser ? 'border-blue-500' : ''}>
+          <Card className={`transition-all duration-300 ${currentStep === 3 ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900 shadow-lg" : ""}`}>
             <CardHeader>
-              <h2 className="text-xl font-semibold">3. Connect Telegram Account</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Link your Telegram account to use the bot
-              </p>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${telegramUser ? "bg-green-100 text-green-600" : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"}`}>
+                  {telegramUser ? "✓" : "3"}
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Link Telegram</h2>
+                  {!telegramUser && (
+                    <p className="text-sm text-[var(--muted)] font-normal mt-0.5">
+                      Verify ownership of your Telegram account
+                    </p>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
               {!telegramUser ? (
-                <>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Click the button below to authorize with Telegram
-                  </p>
-                  <TelegramVerification
-                    onVerified={handleTelegramVerified}
-                  />
-                </>
+                <TelegramVerification onVerified={handleTelegramVerified} />
               ) : (
-                <div className="text-center">
-                  <p className="text-green-600 font-medium">✓ Telegram Connected</p>
-                  <p className="text-sm text-gray-600 mt-2">
+                <div className="text-center py-6 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/20 w-full">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 dark:text-green-400 text-xl">✓</div>
+                  <p className="text-green-700 dark:text-green-300 font-medium">Telegram Connected</p>
+                  <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">
                     {telegramUser.first_name} {telegramUser.last_name}
                     {telegramUser.username && ` (@${telegramUser.username})`}
                   </p>
@@ -494,42 +410,33 @@ export default function Home() {
 
         {/* Step 4: Success */}
         {success && telegramUser && (
-          <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-lg text-center">
-            <h3 className="text-xl font-semibold text-green-800 dark:text-green-200 mb-2">
-              🎉 Setup Complete!
+          <div className="animate-in zoom-in-95 duration-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-8 rounded-2xl text-center border border-green-100 dark:border-green-800/30 shadow-lg">
+            <div className="text-5xl mb-4">🎉</div>
+            <h3 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-3">
+              You're All Set!
             </h3>
-            <p className="text-green-700 dark:text-green-300 mb-4">
-              Your wallet is now linked to your Telegram account.
+            <p className="text-green-700 dark:text-green-300 mb-6 max-w-md mx-auto">
+              Your wallet is now linked to your Telegram account. You can close this window and start using the bot.
             </p>
-            <p className="text-sm text-green-600 dark:text-green-400">
-              You can now use the bot by messaging{" "}
-              <a 
-                href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium underline"
-              >
-                @{process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
-              </a>{" "}
-              on Telegram
-            </p>
+            <a 
+              href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors shadow-md shadow-green-600/20"
+            >
+              Open Telegram Bot
+              <svg className="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           </div>
         )}
 
-        {/* Info Box */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-          <h3 className="font-medium mb-2">How it works:</h3>
-          <ol className="list-decimal list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
-            <li>Connect your RISE wallet to identify yourself</li>
-            <li>Grant specific permissions to the bot (transfers, swaps, etc.)</li>
-            <li>Link your Telegram account for authentication</li>
-            <li>Use natural language commands in Telegram to execute transactions</li>
-          </ol>
-        </div>
-
-        {/* Backend Key Info */}
-        <div className="text-xs text-gray-500 text-center">
-          Bot EOA: {backendKeyAddress}
+        {/* Footer Info */}
+        <div className="pt-8 border-t border-gray-200 dark:border-gray-800 text-center">
+          <p className="text-xs text-[var(--muted)] font-mono">
+            Bot EOA: {backendKeyAddress}
+          </p>
         </div>
       </div>
     </main>

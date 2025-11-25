@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import { P256, Signature, Hex } from "ox";
 import { riseRelayClient, backendSessionKey } from "../config/backendRiseClient.js";
-import { executeWithBackendPermission, type Call } from "./portoExecution.js";
+import { executeWithBackendPermission, type Call, type ExecutionErrorType } from "./portoExecution.js";
 
 // Types matching wallet-demo exactly
 export type TransactionCall = {
@@ -28,6 +28,7 @@ export type TransactionData = {
 export type ExecutionResult = {
   success: boolean;
   error: any;
+  errorType?: ExecutionErrorType;
   data: TransactionData | null;
 };
 
@@ -125,6 +126,7 @@ class BackendTransactionService {
         return {
           success: false,
           error: result.error,
+          errorType: result.errorType,
           data: null
         };
       }
