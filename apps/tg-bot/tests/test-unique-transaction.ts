@@ -47,7 +47,7 @@ async function testUniqueTransaction() {
       });
       
       if (result.data?.hash && result.data?.hash !== "unknown") {
-        console.log(`🌍 Explorer: https://testnet-explorer.riselabs.xyz/tx/${result.data.hash}`);
+        console.log(`🌍 Explorer: https://explorer.testnet.riselabs.xyz/tx/${result.data.hash}`);
       }
     } else {
       console.error("❌ Transaction failed:", result.error?.message || result.error);

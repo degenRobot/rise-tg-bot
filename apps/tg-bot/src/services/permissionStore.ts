@@ -6,7 +6,7 @@ export interface StoredPermission {
   id: `0x${string}`;
   expiry: number;
   keyPublicKey: string;
-  keyType: "p256";
+  keyType: "p256" | "address" | "secp256k1";
   permissions?: {
     calls?: Array<{ to?: string; signature?: string }>;
     spend?: Array<{ limit: string; period: string; token?: string }>;

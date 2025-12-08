@@ -150,7 +150,7 @@ async function testRiseRelayClient() {
         usedSessionKey: swapResult.data?.usedSessionKey,
         totalTransactions: swapResult.data?.totalTransactions,
       });
-      console.log(`🌍 Explorer: https://testnet-explorer.riselabs.xyz/tx/${swapResult.data?.hash}`);
+      console.log(`🌍 Explorer: https://explorer.testnet.riselabs.xyz/tx/${swapResult.data?.hash}`);
     } else {
       console.error("❌ Swap execution failed:", swapResult.error);
       console.error("Error details:", {

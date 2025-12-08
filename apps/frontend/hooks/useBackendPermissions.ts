@@ -16,10 +16,28 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
   // Use Porto's built-in hooks
   const { data: permissions, isLoading: loading, refetch: refetchPermissions } = Hooks.usePermissions();
   const grantPermissions = Hooks.useGrantPermissions();
-  const revokePermissions = Hooks.useRevokePermissions();
+  const revokePermissions = Hooks.useRevokePermissions({
+    mutation: {
+      onSuccess: () => {
+        console.log("✅ [REVOKE] onSuccess callback fired - refetching permissions...");
+        refetchPermissions();
+      }
+    }
+  });
 
-  // Log raw permissions structure
-  console.log("Raw permissions from Hooks.usePermissions:", permissions);
+  // Log raw permissions structure with full details
+  console.log("🔍 [PERMISSIONS] Raw permissions from Hooks.usePermissions:", permissions);
+  console.log("🔍 [PERMISSIONS] Permissions count:", permissions?.length || 0);
+
+  // Check what IDs look like
+  if (permissions && permissions.length > 0) {
+    permissions.forEach((p: any, idx: number) => {
+      console.log(`🔍 [PERMISSION ${idx}] Full object:`, p);
+      console.log(`🔍 [PERMISSION ${idx}] ID:`, p.id, "Type:", typeof p.id);
+      console.log(`🔍 [PERMISSION ${idx}] Key:`, p.key);
+      console.log(`🔍 [PERMISSION ${idx}] Expiry:`, p.expiry, "Type:", typeof p.expiry);
+    });
+  }
 
   // Filter permissions for our backend key (match both EOA address and any derived P256 keys)
   // We show ALL permissions for now to allow cleanup
@@ -122,14 +140,8 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
 
       // Revoke on-chain first
       console.log("🗑️ [REVOKE] Calling Porto revokePermissions.mutateAsync...");
-      const revokeResult = await revokePermissions.mutateAsync({ id: formattedId as `0x${string}` });
-      console.log("🗑️ [REVOKE] Porto revoke result:", revokeResult);
-      console.log("✅ [REVOKE] Permission revoked on-chain successfully");
-
-      // Force refetch permissions to update UI
-      console.log("🗑️ [REVOKE] Forcing permission list refresh...");
-      await refetchPermissions();
-      console.log("🗑️ [REVOKE] Permission list refreshed");
+      await revokePermissions.mutateAsync({ id: formattedId as `0x${string}` });
+      console.log("✅ [REVOKE] Revoke mutation completed (onSuccess callback will refetch)");
 
       // Sync revocation to backend
       console.log("🗑️ [REVOKE] Syncing revocation to backend...");

@@ -69,17 +69,20 @@ export async function executeWithBackendPermission(params: {
 
     console.log(`✅ Found active permission: ${permission.id}`);
 
-    // 2) Create the session key object
+    // 2) Create the session key object based on permission type
     console.log("🔑 Creating session key from backend private key...");
+    console.log("🔑 Permission key type:", permission.keyType);
 
-    const sessionKey = Key.fromP256({
-      privateKey: backendSessionKey.privateKey as Hex,
-      role: 'session',
-      expiry: permission.expiry || 0,
-      permissions: {
-        id: permission.id, // Use the stored permission ID
-      }
-    });
+    // Don't pass permissions - Porto will use on-chain stored permissions
+    const sessionKey = permission.keyType === 'address' || permission.keyType === 'secp256k1'
+      ? Key.fromSecp256k1({
+          privateKey: backendSessionKey.privateKey as Hex,
+          role: 'session',
+        })
+      : Key.fromP256({
+          privateKey: backendSessionKey.privateKey as Hex,
+          role: 'session',
+        });
 
     console.log(`📋 Preparing and sending calls via Rise Wallet SDK...`);
 
@@ -112,6 +115,35 @@ export async function executeWithBackendPermission(params: {
     } else if (result && typeof result === 'object') {
       callsId = (result as any).id || (result as any).callsId || (result as any).hash || "unknown";
       transactionHashes = (result as any).transactionHashes || ((result as any).hash ? [(result as any).hash] : []);
+    }
+
+    console.log(`📦 Calls ID: ${callsId}`);
+
+    // NEW: Get actual transaction hash using wallet_getCallsStatus
+    if (callsId && callsId !== "unknown") {
+      try {
+        console.log(`🔍 Getting transaction status for calls ID: ${callsId}`);
+        // Try different param formats - RPC might expect just the ID string
+        const statusResult = await (portoClient as any).request({
+          method: 'wallet_getCallsStatus',
+          params: [callsId], // Pass ID directly as string, not wrapped in object
+        });
+
+        console.log("📊 Calls status result:", statusResult);
+
+        // Extract transaction hash from receipts
+        if (statusResult?.receipts && Array.isArray(statusResult.receipts)) {
+          transactionHashes = statusResult.receipts
+            .map((r: any) => r.transactionHash)
+            .filter((h: any) => h);
+          console.log(`✅ Found ${transactionHashes.length} transaction hash(es):`, transactionHashes);
+        } else if (statusResult?.transactionHash) {
+          transactionHashes = [statusResult.transactionHash];
+          console.log(`✅ Found transaction hash:`, transactionHashes[0]);
+        }
+      } catch (statusError) {
+        console.log("⚠️  Could not fetch transaction status (non-critical):", statusError);
+      }
     }
 
     console.log("✅ Backend permission execution successful!");

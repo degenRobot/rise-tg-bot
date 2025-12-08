@@ -119,7 +119,7 @@ async function testRiseWalletPattern() {
         console.log(`   Hash: ${result.data?.hash}`);
         console.log(`   Used session key: ${result.data?.usedSessionKey}`);
         console.log(`   Total transactions: ${result.data?.totalTransactions}`);
-        console.log(`   Explorer: https://testnet-explorer.riselabs.xyz/tx/${result.data?.hash}`);
+        console.log(`   Explorer: https://explorer.testnet.riselabs.xyz/tx/${result.data?.hash}`);
       } else {
         console.log("❌ RISE WALLET SWAP FAILED:");
         console.log(`   Error: ${result.error}`);

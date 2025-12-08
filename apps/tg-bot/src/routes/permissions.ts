@@ -25,7 +25,7 @@ const backendPrivateKey = process.env.BACKEND_SIGNER_PRIVATE_KEY!;
 // Derive the P256 public key for frontend use
 function getBackendP256PublicKey(): string {
   const publicKeyBytes = P256.getPublicKey({ 
-    privateKey: backendPrivateKey 
+    privateKey: backendPrivateKey as `0x${string}`
   });
   
   // Convert to hex format

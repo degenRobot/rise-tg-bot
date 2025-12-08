@@ -377,7 +377,7 @@ export function createLlmRouter() {
 
             const totalTxs = swapResult.data?.totalTransactions || 1;
             const txHash = swapResult.data?.hash || "unknown";
-            return `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key\nFinal hash: ${txHash?.slice(0, 10)}...\nCheck it on the explorer: https://testnet-explorer.riselabs.xyz/tx/${txHash}`;
+            return `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key\nFinal hash: ${txHash?.slice(0, 10)}...\nCheck it on the explorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
 
           } catch (error) {
             console.error("🔄 Swap execution error:", error);
