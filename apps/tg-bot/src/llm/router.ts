@@ -136,12 +136,15 @@ export function createLlmRouter() {
                 Mint tokens (mints test tokens):
                 {"tool": "mint", "params": {"tokenSymbol": "MockUSD"|"MockToken"}}
                 
-                Get balances:
+                Get balances (individual token balances):
                 {"tool": "get_balances", "params": {"address": "${userAddress || "0x123..."}"}}
-                
+
+                Get wallet summary (total portfolio value, all balances, recent transactions):
+                {"tool": "get_wallet_summary", "params": {"address": "${userAddress || "0x123..."}"}}
+
                 Get transactions:
                 {"tool": "get_transactions", "params": {"address": "${userAddress || "0x123..."}", "limit": 10}}
-                
+
                 IMPORTANT: 
                 - Token names: Use exact values "MockUSD" or "MockToken"
                 - Amounts: Always use strings like "10.5", never numbers

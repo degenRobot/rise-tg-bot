@@ -1,25 +1,8 @@
 import { Address, createPublicClient, createWalletClient, http } from "viem";
+import { riseTestnet } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import "dotenv/config";
 
-// RISE Testnet configuration (matches wallet-demo)
-export const riseTestnet = {
-  id: 11155931,
-  name: "RISE Testnet", 
-  network: "rise-testnet",
-  nativeCurrency: {
-    name: "RISE",
-    symbol: "RISE", 
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: { http: ["https://testnet.riselabs.xyz"] },
-    public: { http: ["https://testnet.riselabs.xyz"] },
-  },
-  blockExplorers: {
-    default: { name: "RISE Explorer", url: "https://testnet-explorer.riselabs.xyz" },
-  },
-} as const;
 
 // Environment variables
 const RISE_RPC_URL = process.env.RISE_RPC_URL || "https://testnet.riselabs.xyz";
@@ -35,6 +18,7 @@ if (!BACKEND_SIGNER_ADDRESS) {
 
 // Create account from private key (session key equivalent)
 export const backendAccount = privateKeyToAccount(BACKEND_SIGNER_PRIVATE_KEY);
+console.log("here's the backend account: ", backendAccount)
 
 // Public client for reading blockchain state
 export const publicClient = createPublicClient({

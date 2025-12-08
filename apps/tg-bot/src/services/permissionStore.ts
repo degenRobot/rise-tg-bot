@@ -224,31 +224,66 @@ export function cleanupExpiredPermissions(): number {
 }
 
 /**
+ * Revoke a specific permission by ID
+ */
+export function revokePermission(params: {
+  walletAddress: Address;
+  permissionId: `0x${string}`;
+}): boolean {
+  const { walletAddress, permissionId } = params;
+  const allUsers = readPermissionsFile();
+
+  const userRecord = allUsers.find(
+    u => u.walletAddress.toLowerCase() === walletAddress.toLowerCase()
+  );
+
+  if (!userRecord) {
+    console.log(`❌ No user record found for ${walletAddress}`);
+    return false;
+  }
+
+  const beforeCount = userRecord.permissions.length;
+  userRecord.permissions = userRecord.permissions.filter(p => p.id !== permissionId);
+  const afterCount = userRecord.permissions.length;
+
+  if (beforeCount === afterCount) {
+    console.log(`❌ Permission ${permissionId} not found`);
+    return false;
+  }
+
+  userRecord.lastSync = Date.now();
+  writePermissionsFile(allUsers);
+
+  console.log(`✅ Revoked permission ${permissionId} for user ${walletAddress}`);
+  return true;
+}
+
+/**
  * Debug: List all stored permissions
  */
 export function debugListPermissions(): void {
   const allUsers = readPermissionsFile();
   const now = Date.now() / 1000;
-  
+
   console.log("\n📋 Stored Permissions Debug:");
   console.log("=" .repeat(50));
-  
+
   if (allUsers.length === 0) {
     console.log("No stored permissions found.");
     return;
   }
-  
+
   allUsers.forEach((user, userIndex) => {
     console.log(`\n👤 User ${userIndex + 1}:`);
     console.log(`   Wallet: ${user.walletAddress}`);
     console.log(`   Telegram: ${user.telegramHandle || 'N/A'} (${user.telegramId || 'N/A'})`);
     console.log(`   Last Sync: ${new Date(user.lastSync)}`);
     console.log(`   Permissions: ${user.permissions.length}`);
-    
+
     user.permissions.forEach((perm, permIndex) => {
       const isExpired = perm.expiry <= now;
       const status = isExpired ? "❌ EXPIRED" : "✅ ACTIVE";
-      
+
       console.log(`     ${permIndex + 1}. ${status}`);
       console.log(`        ID: ${perm.id}`);
       console.log(`        Key: ${perm.keyPublicKey.slice(0, 20)}...`);
@@ -257,6 +292,6 @@ export function debugListPermissions(): void {
       console.log(`        Spend: ${perm.permissions?.spend?.length || 0}`);
     });
   });
-  
+
   console.log("=" .repeat(50));
 }

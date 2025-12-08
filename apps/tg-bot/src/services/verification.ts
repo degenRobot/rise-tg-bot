@@ -1,7 +1,7 @@
 import { type Address, type Hex, hashMessage, getAddress } from "viem";
 import { verifyMessage, verifyHash } from "viem/actions";
 import { z } from "zod";
-import { riseRelayClient } from "../config/backendRiseClient.js";
+import { risePublicClient } from "../config/backendRiseClient.js";
 import { storage } from './storage.js';
 
 // Verification message schema
@@ -52,7 +52,7 @@ export function createVerificationMessage(
 // Check if address is a smart contract
 async function isContract(address: Address): Promise<boolean> {
   try {
-    const code = await riseRelayClient.getBytecode({ address });
+    const code = await risePublicClient.getBytecode({ address });
     return !!code && code !== '0x';
   } catch (error) {
     console.error("Failed to check if address is contract:", error);
@@ -69,7 +69,7 @@ async function verifySignatureWithViem(
   try {
     console.log("Verifying with viem's verifyMessage...");
     // Use public client actions
-    const isValid = await verifyMessage(riseRelayClient, {
+    const isValid = await verifyMessage(risePublicClient, {
       address: getAddress(address),
       message,
       signature
@@ -84,8 +84,8 @@ async function verifySignatureWithViem(
     try {
       console.log("Trying fallback hash verification...");
       const messageHash = hashMessage(message);
-      
-      const isValid = await verifyHash(riseRelayClient, {
+
+      const isValid = await verifyHash(risePublicClient, {
         address: getAddress(address),
         hash: messageHash,
         signature

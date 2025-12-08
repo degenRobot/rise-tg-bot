@@ -26,11 +26,9 @@ interface ActivePermissionsProps {
 
 export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: ActivePermissionsProps) {
   const [revokingId, setRevokingId] = useState<string | null>(null);
-  
-  // Filter to only show permissions for our backend key
-  const relevantPermissions = permissions.filter(
-    p => p.key?.publicKey?.toLowerCase() === backendKeyAddress.toLowerCase()
-  );
+
+  // Show ALL permissions for cleanup (temporarily disabled filtering)
+  const relevantPermissions = permissions;
   
   const handleRevoke = async (id: string) => {
     try {

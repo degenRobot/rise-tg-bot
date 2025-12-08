@@ -1,6 +1,5 @@
 import { Address } from "viem";
-import { P256, Signature, Hex } from "ox";
-import { riseRelayClient, backendSessionKey } from "../config/backendRiseClient.js";
+import { risePublicClient, backendSessionKey } from "../config/backendRiseClient.js";
 import { executeWithBackendPermission, type Call, type ExecutionErrorType } from "./portoExecution.js";
 
 // Types matching wallet-demo exactly
@@ -39,7 +38,7 @@ export type ExecutionResult = {
  * Uses our BACKEND_SIGNER_PRIVATE_KEY as the session key.
  */
 class BackendTransactionService {
-  private relayClient = riseRelayClient;
+  private publicClient = risePublicClient;
   private chainId = 11155931; // RISE Testnet
   private sessionKey: {
     privateKey: string;
@@ -48,35 +47,23 @@ class BackendTransactionService {
   } | null = null;
 
   /**
-   * Initialize session key from backend signer private key
-   * This matches the session key derivation in wallet-demo
+   * Initialize session key from backend signer (using EOA address directly)
+   * Simple approach: EOA address is used as the session key
    */
   private async initializeSessionKey(): Promise<void> {
     if (this.sessionKey) return;
 
     try {
-      console.log("🔑 Initializing backend session key...");
-      
-      // Derive P256 public key from our backend signer private key
-      const publicKeyBytes = P256.getPublicKey({ 
-        privateKey: backendSessionKey.privateKey 
-      });
-      
-      // Convert to hex format (remove 0x04 prefix if present)
-      const keyBytes = publicKeyBytes instanceof Uint8Array ? 
-        publicKeyBytes : 
-        new Uint8Array([...publicKeyBytes.x.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16)), 
-                        ...publicKeyBytes.y.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16))]);
-      
-      const publicKeyHex = `0x${Buffer.from(keyBytes).toString('hex')}`;
-      
+      console.log("🔑 Initializing backend session key (EOA)...");
+
+      // Use EOA address directly as public key
       this.sessionKey = {
         privateKey: backendSessionKey.privateKey,
-        publicKey: publicKeyHex,
-        type: "p256" as const,
+        publicKey: backendSessionKey.address, // Use EOA address directly
+        type: "p256" as const, // Porto accepts EOA as p256 type
       };
 
-      console.log(`✅ Session key initialized: ${publicKeyHex.slice(0, 20)}...`);
+      console.log(`✅ Session key initialized: ${backendSessionKey.address}`);
     } catch (error) {
       throw new Error(`Failed to initialize session key: ${error}`);
     }

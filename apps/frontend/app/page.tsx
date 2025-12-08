@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -44,18 +45,15 @@ export default function Home() {
   
   // Fix hydration by only rendering after mount
   useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  // Get backend key from env
-  useEffect(() => {
     const backendKey = process.env.NEXT_PUBLIC_BACKEND_KEY_ADDRESS || "0x038AEBDbDEcd7F4604Fd6902b40BE063e5fc3f7B";
-    setBackendKeyAddress(backendKey);
+
+    setMounted(true);
+        setBackendKeyAddress(backendKey);
   }, []);
+
   
   const {
     permissions,
-    loading,
     isGranting,
     grantPermissions,
     revokePermission
@@ -182,7 +180,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
+    <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-background">
       <div className="max-w-3xl mx-auto space-y-8">
         
         {/* Header */}
@@ -190,10 +188,10 @@ export default function Home() {
           <div className="inline-flex items-center justify-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl mb-2">
             <span className="text-3xl">🤖</span>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-[var(--foreground)]">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
             RISE Telegram Bot
           </h1>
-          <p className="text-lg text-[var(--muted)] max-w-2xl mx-auto">
+          <p className="text-lg text-(--muted) max-w-2xl mx-auto">
             Connect your wallet and link your Telegram account to start using the bot for transactions.
           </p>
         </div>
@@ -231,7 +229,7 @@ export default function Home() {
           <CardContent>
             {!isConnected ? (
               <div className="space-y-6 text-center py-4">
-                <p className="text-[var(--muted)]">
+                <p className="text-(--muted)">
                   Connect your RISE Smart Wallet to get started.
                 </p>
                 {connectors.length === 0 ? (
@@ -322,7 +320,7 @@ export default function Home() {
                 <div>
                   <h2 className="text-xl font-semibold">Grant Permissions</h2>
                   {!hasGrantedPermissions && (
-                    <p className="text-sm text-[var(--muted)] font-normal mt-0.5">
+                    <p className="text-sm text-(--muted) font-normal mt-0.5">
                       Authorize the bot to act on your behalf
                     </p>
                   )}
@@ -384,7 +382,7 @@ export default function Home() {
                 <div>
                   <h2 className="text-xl font-semibold">Link Telegram</h2>
                   {!telegramUser && (
-                    <p className="text-sm text-[var(--muted)] font-normal mt-0.5">
+                    <p className="text-sm text-(--muted) font-normal mt-0.5">
                       Verify ownership of your Telegram account
                     </p>
                   )}
@@ -410,10 +408,10 @@ export default function Home() {
 
         {/* Step 4: Success */}
         {success && telegramUser && (
-          <div className="animate-in zoom-in-95 duration-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-8 rounded-2xl text-center border border-green-100 dark:border-green-800/30 shadow-lg">
+          <div className="animate-in zoom-in-95 duration-500 bg-linear-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-8 rounded-2xl text-center border border-green-100 dark:border-green-800/30 shadow-lg">
             <div className="text-5xl mb-4">🎉</div>
             <h3 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-3">
-              You're All Set!
+              You&apos;re All Set!
             </h3>
             <p className="text-green-700 dark:text-green-300 mb-6 max-w-md mx-auto">
               Your wallet is now linked to your Telegram account. You can close this window and start using the bot.
@@ -434,7 +432,7 @@ export default function Home() {
 
         {/* Footer Info */}
         <div className="pt-8 border-t border-gray-200 dark:border-gray-800 text-center">
-          <p className="text-xs text-[var(--muted)] font-mono">
+          <p className="text-xs text-(--muted) font-mono">
             Bot EOA: {backendKeyAddress}
           </p>
         </div>

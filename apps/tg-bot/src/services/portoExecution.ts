@@ -1,9 +1,8 @@
 import type { Address, Hex } from "viem";
-import { riseRelayClient } from "../config/backendRiseClient.js";
+import { portoClient } from "../config/backendRiseClient.js";
 import { findActivePermissionForBackendKey, findPermissionForBackendKey } from "./permissionStore.js";
-import { P256, Signature } from "ox";
-import * as RelayService from "./relay.js";
 import * as Key from "rise-wallet/viem/Key";
+import * as RelayActions from "rise-wallet/viem/RelayActions";
 
 export type Call = {
   to: Address;
@@ -11,11 +10,11 @@ export type Call = {
   value?: bigint;
 };
 
-export type ExecutionErrorType = 
-  | "expired_session" 
-  | "unauthorized" 
-  | "no_permission" 
-  | "network_error" 
+export type ExecutionErrorType =
+  | "expired_session"
+  | "unauthorized"
+  | "no_permission"
+  | "network_error"
   | "unknown";
 
 export interface ExecutionResult {
@@ -27,8 +26,8 @@ export interface ExecutionResult {
 }
 
 /**
- * Execute transactions using stored permissions via Porto relay
- * Uses the refactored RelayService for robust handling
+ * Execute transactions using stored permissions via Porto SDK
+ * Uses Porto.create with mode: relay - the SDK handles precall storage automatically
  */
 export async function executeWithBackendPermission(params: {
   walletAddress: Address;
@@ -64,69 +63,38 @@ export async function executeWithBackendPermission(params: {
       if (expiredPermission && expiredPermission.expiry <= Date.now() / 1000) {
         throw new Error("Session key expired");
       }
-      
+
       throw new Error(`No active permission found for backend key ${backendSessionKey.publicKey.slice(0, 10)}... on wallet ${walletAddress}`);
     }
 
     console.log(`✅ Found active permission: ${permission.id}`);
 
-    // 2) Prepare calls using RelayService
-    console.log("📋 Preparing calls via RelayService...");
+    // 2) Create the session key object
+    console.log("🔑 Creating session key from backend private key...");
 
-    // Construct the signing key
-    const signingKey = Key.fromP256({
+    const sessionKey = Key.fromP256({
       privateKey: backendSessionKey.privateKey as Hex,
       role: 'session',
       expiry: permission.expiry || 0,
+      permissions: {
+        id: permission.id, // Use the stored permission ID
+      }
     });
 
-    const prepareResult = await RelayService.prepareCalls(riseRelayClient as any, {
-      account: { address: walletAddress } as any, // Minimal account object
-      chain: riseRelayClient.chain!,
+    console.log(`📋 Preparing and sending calls via Rise Wallet SDK...`);
+
+    // 3) Use Rise Wallet relay actions - the SDK handles everything
+    const result = await RelayActions.sendCalls(portoClient, {
+      account: { address: walletAddress } as any,
       calls: calls.map(c => ({
         to: c.to,
         data: c.data,
         value: c.value,
       })),
-      key: signingKey,
-      permissionId: permission.id,
-      // We don't need to pass authorizeKeys unless we're authorizing NEW keys
-      // We are using an EXISTING key
+      key: sessionKey,
     });
 
-    const { context, digest } = prepareResult;
-
-    if (!digest) {
-      throw new Error("No digest returned from prepareCalls");
-    }
-
-    console.log(`📝 Digest to sign: ${digest}`);
-
-    // 3) Sign the digest
-    console.log("✍️ Signing with backend P256 key...");
-    
-    // We can use Key.sign from rise-wallet, which handles wrapping if needed
-    // But RelayService.prepareCalls might return a digest that expects raw signature?
-    // rise-wallet's prepareCalls returns a digest that should be signed.
-    // Let's use Key.sign to be safe and consistent with rise-wallet patterns
-    
-    const signature = await Key.sign(signingKey, {
-      payload: digest,
-      address: null, // Not used for P256 usually, or handled by library
-    });
-
-    console.log(`✅ Generated signature: ${signature.slice(0, 20)}...`);
-
-    // 4) Send prepared calls
-    console.log("📤 Sending prepared calls...");
-
-    const result = await RelayService.sendPreparedCalls(riseRelayClient as any, {
-      context,
-      signature,
-      key: signingKey,
-    });
-
-    console.log("📦 Send prepared calls result:", result);
+    console.log("📦 Send calls result:", result);
 
     // Process result
     let callsId = "unknown";
@@ -135,7 +103,7 @@ export async function executeWithBackendPermission(params: {
     if (Array.isArray(result) && result.length > 0) {
       const firstResult = result[0];
       callsId = firstResult.id || firstResult.callsId || firstResult.hash || "unknown";
-      
+
       if (firstResult.transactionHashes) {
         transactionHashes = firstResult.transactionHashes;
       } else if (firstResult.hash) {
@@ -147,7 +115,7 @@ export async function executeWithBackendPermission(params: {
     }
 
     console.log("✅ Backend permission execution successful!");
-    
+
     return {
       success: true,
       callsId,
@@ -156,7 +124,7 @@ export async function executeWithBackendPermission(params: {
 
   } catch (error) {
     console.error("❌ Backend permission execution failed:", error);
-    
+
     let errorMessage = error instanceof Error ? error.message : String(error);
     let errorType: ExecutionErrorType = "unknown";
 

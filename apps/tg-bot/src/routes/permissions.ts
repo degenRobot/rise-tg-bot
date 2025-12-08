@@ -8,14 +8,15 @@ import {
   getVerifiedAccount,
   revokeVerification 
 } from "../services/verification.js";
-import { 
-  storePermission, 
+import {
+  storePermission,
   findActivePermissionForBackendKey,
   getUserPermissions,
   getPermissionsByTelegramId,
   cleanupExpiredPermissions,
   debugListPermissions,
-  type StoredPermission 
+  revokePermission,
+  type StoredPermission
 } from "../services/permissionStore.js";
 
 const backendKeyAddress = process.env.BACKEND_SIGNER_ADDRESS as Address;
@@ -118,7 +119,7 @@ export function registerPermissionRoutes(app: Express) {
             permissions: permissionDetails.permissions,
           },
         });
-        
+
         console.log("✅ Stored detailed permission data");
       } else {
         console.log("⚠️  No detailed permission data provided - using legacy sync");
@@ -131,10 +132,44 @@ export function registerPermissionRoutes(app: Express) {
       }
 
       res.json({ ok: true });
-      
+
     } catch (error) {
       console.error("❌ Permission sync error:", error);
       res.status(500).json({ error: "Failed to sync permissions" });
+    }
+  });
+
+  // Called by frontend AFTER revokePermissions succeeds
+  app.post("/api/permissions/revoke", (req: Request, res: Response) => {
+    try {
+      const { accountAddress, permissionId } = req.body as {
+        accountAddress: Address;
+        permissionId: `0x${string}`;
+      };
+
+      console.log("🗑️  Permission revoke request:", {
+        accountAddress,
+        permissionId,
+      });
+
+      if (!accountAddress || !permissionId) {
+        return res.status(400).json({ error: "accountAddress and permissionId are required" });
+      }
+
+      const revoked = revokePermission({
+        walletAddress: accountAddress,
+        permissionId,
+      });
+
+      if (revoked) {
+        res.json({ ok: true, message: "Permission revoked from backend storage" });
+      } else {
+        res.status(404).json({ error: "Permission not found in backend storage" });
+      }
+
+    } catch (error) {
+      console.error("❌ Permission revoke error:", error);
+      res.status(500).json({ error: "Failed to revoke permission" });
     }
   });
 
