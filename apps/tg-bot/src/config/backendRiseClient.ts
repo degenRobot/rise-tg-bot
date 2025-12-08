@@ -1,5 +1,6 @@
-import { createClient, http, createPublicClient } from "viem";
-import { Chains, Porto } from "rise-wallet";
+import { http, createPublicClient } from "viem";
+import { Chains, Porto, Mode } from "rise-wallet";
+import * as RelayClient from "rise-wallet/viem/RelayClient";
 import { config } from "dotenv";
 import { resolve } from "path";
 
@@ -24,11 +25,17 @@ if (!BACKEND_SIGNER_ADDRESS) {
  * The SDK handles precall storage and management automatically.
  */
 
-// Create Porto client for backend use with relay mode
-// Note: Porto.create needs to be called differently - using defaultConfig.relay transport
-export const portoClient = createClient({
-  chain: Chains.riseTestnet,
-  transport: Porto.defaultConfig.relay,
+// Create Porto instance with relay mode for backend use
+export const porto = Porto.create({
+  chains: [Chains.riseTestnet],
+  mode: Mode.relay(),
+  relay: http("https://relay.wallet.risechain.com"),
+});
+
+// Extract the viem client for RelayActions
+// Use RelayClient.fromPorto to get a proper viem client with relay transport
+export const portoClient = RelayClient.fromPorto(porto, {
+  chainId: Chains.riseTestnet.id,
 });
 
 // Regular viem client for basic blockchain operations (with public actions)
@@ -37,16 +44,16 @@ export const risePublicClient = createPublicClient({
   transport: http("https://testnet.riselabs.xyz"),
 });
 
-// Backend session key configuration
-export const backendSessionKey = {
+// Backend signer configuration
+// Note: The actual P256 session key will be generated separately
+// This EOA private key is just for backend operations
+export const backendSigner = {
   privateKey: BACKEND_SIGNER_PRIVATE_KEY,
   address: BACKEND_SIGNER_ADDRESS,
-  publicKey: "", // Will be derived from private key
-  type: "p256" as const,
 };
 
 console.log(`🔧 Backend RISE client configured with Porto.create (relay mode)`);
-console.log(`🔑 Backend signer: ${BACKEND_SIGNER_ADDRESS}`);
+console.log(`🔑 Backend EOA address: ${BACKEND_SIGNER_ADDRESS}`);
 console.log(`⛓️  Chain: ${Chains.riseTestnet.name} (${Chains.riseTestnet.id})`);
 
 export { Chains };

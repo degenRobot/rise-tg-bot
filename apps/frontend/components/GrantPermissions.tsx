@@ -94,7 +94,7 @@ export function GrantPermissions({ onGranted, backendKeyAddress }: GrantPermissi
         method: "wallet_grantPermissions",
         params: [{
           key: {
-            address: backendKeyAddress as Address,
+            publicKey: backendKeyAddress, // P256 uses publicKey, not address
             expiry,
             permissions,
             type: "p256"

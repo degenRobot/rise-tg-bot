@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
 import type { Address } from "viem";
-import { P256 } from "ox";
 import { PERMISSION_TEMPLATES } from "../types/index.js";
 import { 
   createVerificationMessage, 
@@ -18,26 +17,10 @@ import {
   revokePermission,
   type StoredPermission
 } from "../services/permissionStore.js";
+import { getBackendP256PublicKey } from "../services/backendSessionKey.js";
 
 const backendKeyAddress = process.env.BACKEND_SIGNER_ADDRESS as Address;
 const backendPrivateKey = process.env.BACKEND_SIGNER_PRIVATE_KEY!;
-
-// Derive the P256 public key for frontend use
-function getBackendP256PublicKey(): string {
-  const publicKeyBytes = P256.getPublicKey({ 
-    privateKey: backendPrivateKey 
-  });
-  
-  // Convert to hex format
-  const keyBytes = publicKeyBytes instanceof Uint8Array ? 
-    publicKeyBytes : 
-    new Uint8Array([
-      ...publicKeyBytes.x.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16)), 
-      ...publicKeyBytes.y.toString(16).padStart(64, '0').match(/.{2}/g)!.map(x => parseInt(x, 16))
-    ]);
-  
-  return `0x${Buffer.from(keyBytes).toString('hex')}`;
-}
 
 // Very naive in-memory store for prototype
 const userStore = new Map<
