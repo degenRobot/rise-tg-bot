@@ -105,7 +105,7 @@ function getErrorResponse(errorType: string | undefined, errorMsg: any): string 
   return `❌ Transaction failed: ${errorMsg instanceof Error ? errorMsg.message : String(errorMsg)}`;
 }
 
-export function createLlmRouter() {
+export function createLlmRouter() {0
   return {
     async handleMessage(opts: { 
       telegramId: string; 

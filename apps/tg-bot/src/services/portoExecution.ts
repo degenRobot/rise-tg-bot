@@ -1,7 +1,7 @@
 import type { Address, Hex } from "viem";
 import { portoClient } from "../config/backendRiseClient.js";
 import { findActivePermissionForBackendKey, findPermissionForBackendKey } from "./permissionStore.js";
-import * as Key from "rise-wallet/viem/Key";
+import { getOrCreateBackendSessionKey, getBackendP256PublicKey } from "./backendSessionKey.js";
 import * as RelayActions from "rise-wallet/viem/RelayActions";
 
 export type Call = {
@@ -32,61 +32,48 @@ export interface ExecutionResult {
 export async function executeWithBackendPermission(params: {
   walletAddress: Address;
   calls: Call[];
-  backendSessionKey: {
-    privateKey: string;
-    publicKey: string;
-    type: "p256";
-  };
 }): Promise<ExecutionResult> {
-  const { walletAddress, calls, backendSessionKey } = params;
+  const { walletAddress, calls } = params;
+
+  // Get the backend session key (P256)
+  const backendSessionKey = getOrCreateBackendSessionKey();
+  const backendPublicKey = getBackendP256PublicKey();
 
   console.log("🔑 Executing with backend permission for:", {
     wallet: walletAddress,
     callsCount: calls.length,
-    backendKey: backendSessionKey.publicKey.slice(0, 20) + "...",
+    backendKey: backendPublicKey.slice(0, 20) + "...",
   });
 
   try {
     // 1) Find the active permission for this wallet + backend key
     let permission = findActivePermissionForBackendKey({
       walletAddress,
-      backendPublicKey: backendSessionKey.publicKey,
+      backendPublicKey: backendPublicKey,
     });
 
     if (!permission) {
       // Check if it's expired
       const expiredPermission = findPermissionForBackendKey({
         walletAddress,
-        backendPublicKey: backendSessionKey.publicKey,
+        backendPublicKey: backendPublicKey,
       });
 
       if (expiredPermission && expiredPermission.expiry <= Date.now() / 1000) {
         throw new Error("Session key expired");
       }
 
-      throw new Error(`No active permission found for backend key ${backendSessionKey.publicKey.slice(0, 10)}... on wallet ${walletAddress}`);
+      throw new Error(`No active permission found for backend key ${backendPublicKey.slice(0, 10)}... on wallet ${walletAddress}`);
     }
 
     console.log(`✅ Found active permission: ${permission.id}`);
 
-    // 2) Create the session key object based on permission type
-    console.log("🔑 Creating session key from backend private key...");
-    console.log("🔑 Permission key type:", permission.keyType);
-
-    // Don't pass permissions - Porto will use on-chain stored permissions
-    const sessionKey = permission.keyType === 'address' || permission.keyType === 'secp256k1'
-      ? Key.fromSecp256k1({
-          privateKey: backendSessionKey.privateKey as Hex,
-          role: 'session',
-        })
-      : Key.fromP256({
-          privateKey: backendSessionKey.privateKey as Hex,
-          role: 'session',
-        });
+    // 2) Use the backend P256 session key
+    console.log("🔑 Using backend P256 session key...");
 
     console.log(`📋 Preparing and sending calls via Rise Wallet SDK...`);
 
-    // 3) Use Rise Wallet relay actions - the SDK handles everything
+    // 3) Use Rise Wallet relay actions - Porto will check permissions on-chain
     const result = await RelayActions.sendCalls(portoClient, {
       account: { address: walletAddress } as any,
       calls: calls.map(c => ({
@@ -94,7 +81,7 @@ export async function executeWithBackendPermission(params: {
         data: c.data,
         value: c.value,
       })),
-      key: sessionKey,
+      key: backendSessionKey,
     });
 
     console.log("📦 Send calls result:", result);
@@ -170,7 +157,7 @@ export async function executeWithBackendPermission(params: {
        if (errorMessage.includes("Invalid precall")) {
         errorMessage = `Invalid precall or permission mismatch. Permission ID: ${findActivePermissionForBackendKey({
           walletAddress,
-          backendPublicKey: backendSessionKey.publicKey,
+          backendPublicKey: backendPublicKey,
         })?.id}`;
       }
     } else if (errorMessage.includes("Network") || errorMessage.includes("fetch")) {

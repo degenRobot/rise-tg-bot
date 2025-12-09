@@ -1,5 +1,5 @@
 import { Address } from "viem";
-import { risePublicClient, backendSessionKey } from "../config/backendRiseClient.js";
+import { risePublicClient } from "../config/backendRiseClient.js";
 import { executeWithBackendPermission, type Call, type ExecutionErrorType } from "./portoExecution.js";
 
 // Types matching wallet-demo exactly
@@ -40,50 +40,16 @@ export type ExecutionResult = {
 class BackendTransactionService {
   private publicClient = risePublicClient;
   private chainId = 11155931; // RISE Testnet
-  private sessionKey: {
-    privateKey: string;
-    publicKey: string;
-    type: "p256";
-  } | null = null;
 
   /**
-   * Initialize session key from backend signer (using EOA address directly)
-   * Simple approach: EOA address is used as the session key
-   */
-  private async initializeSessionKey(): Promise<void> {
-    if (this.sessionKey) return;
-
-    try {
-      console.log("🔑 Initializing backend session key (EOA)...");
-
-      // Use EOA address directly as public key
-      this.sessionKey = {
-        privateKey: backendSessionKey.privateKey,
-        publicKey: backendSessionKey.address, // Use EOA address directly
-        type: "p256" as const, // Porto accepts EOA as p256 type
-      };
-
-      console.log(`✅ Session key initialized: ${backendSessionKey.address}`);
-    } catch (error) {
-      throw new Error(`Failed to initialize session key: ${error}`);
-    }
-  }
-
-  /**
-   * Main execute function (NEW - using stored permissions)
-   * This replaces the old manual precall approach
+   * Main execute function (using stored permissions)
+   * P256 session key is handled internally by portoExecution
    */
   async execute(props: TransactionProps, userAddress: Address): Promise<ExecutionResult> {
     console.log("🚀 Backend executing transaction (using stored permissions)...");
-    const { calls, requiredPermissions } = props;
+    const { calls } = props;
 
     try {
-      await this.initializeSessionKey();
-      
-      if (!this.sessionKey) {
-        throw new Error("Session key not initialized");
-      }
-
       // Convert calls to Porto format
       const portoCalls: Call[] = calls.map(call => ({
         to: call.to,
@@ -91,11 +57,10 @@ class BackendTransactionService {
         value: call.value,
       }));
 
-      // Use the new Porto execution helper
+      // P256 session key handled internally
       const result = await executeWithBackendPermission({
         walletAddress: userAddress,
         calls: portoCalls,
-        backendSessionKey: this.sessionKey,
       });
 
       if (result.success) {

@@ -81,6 +81,16 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
       // Sync permission to backend
       console.log("Syncing permission to backend...");
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8008";
+
+      // Convert BigInt values to strings for JSON serialization
+      const serializablePermissions = {
+        calls: permissionData.calls,
+        spend: permissionData.spend?.map((s: any) => ({
+          ...s,
+          limit: s.limit.toString(), // Convert BigInt to string
+        })),
+      };
+
       const syncResponse = await fetch(`${apiUrl}/api/permissions/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,7 +101,7 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
           permissionDetails: {
             id: result.id,
             keyPublicKey: backendKeyAddress,
-            permissions: permissionData,
+            permissions: serializablePermissions,
           },
         }),
       });

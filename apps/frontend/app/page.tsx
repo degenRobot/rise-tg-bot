@@ -60,16 +60,17 @@ export default function Home() {
   } = useBackendPermissions({ backendKeyAddress });
 
   // Check if permissions are already granted
-  useEffect(() => {
-    if (permissions && permissions.length > 0) {
-      // Check if any permission is still valid
-      const hasValidPermission = permissions.some(p => {
-        const expiry = p.expiry || 0;
-        return expiry > Math.floor(Date.now() / 1000);
-      });
-      setHasGrantedPermissions(hasValidPermission);
-    }
-  }, [permissions]);
+  // TEMPORARILY DISABLED - Allow re-granting permissions even if some exist
+  // useEffect(() => {
+  //   if (permissions && permissions.length > 0) {
+  //     // Check if any permission is still valid
+  //     const hasValidPermission = permissions.some(p => {
+  //       const expiry = p.expiry || 0;
+  //       return expiry > Math.floor(Date.now() / 1000);
+  //     });
+  //     setHasGrantedPermissions(hasValidPermission);
+  //   }
+  // }, [permissions]);
   
   const handleCallToggle = (id: string) => {
     setSelectedCalls(prev =>
