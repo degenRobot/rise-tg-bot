@@ -1,29 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Address } from "viem";
-
-export interface StoredPermission {
-  id: `0x${string}`;
-  expiry: number;
-  keyPublicKey: string;
-  keyType: "p256" | "address" | "secp256k1";
-  permissions?: {
-    calls?: Array<{ to?: string; signature?: string }>;
-    spend?: Array<{ limit: string; period: string; token?: string }>;
-  };
-  grantedAt: number;
-  userAddress: Address;
-  telegramId?: string;
-  telegramHandle?: string;
-}
-
-export interface UserPermissions {
-  walletAddress: Address;
-  telegramId?: string;
-  telegramHandle?: string;
-  permissions: StoredPermission[];
-  lastSync: number;
-}
+import type { StoredPermission, UserPermissions } from "../types/index.js";
 
 const PERMISSIONS_FILE = path.join(process.cwd(), "data", "permissions.json");
 
@@ -98,7 +76,7 @@ export function storePermission(params: {
   
   writePermissionsFile(allUsers);
   
-  console.log(`✅ Stored permission ${permission.id} for user ${walletAddress}`);
+  console.log(`Stored permission ${permission.id} for user ${walletAddress}`);
 }
 
 /**
@@ -127,10 +105,10 @@ export function findActivePermissionForBackendKey(params: {
     const isBackendKey = p.keyPublicKey.toLowerCase() === backendPublicKey.toLowerCase();
     
     if (!isNotExpired) {
-      console.log(`⏰ Permission ${p.id} expired at ${new Date(p.expiry * 1000)}`);
+      console.log(`Permission ${p.id} expired at ${new Date(p.expiry * 1000)}`);
     }
     if (!isBackendKey) {
-      console.log(`🔑 Permission ${p.id} is for different key: ${p.keyPublicKey.slice(0, 10)}...`);
+      console.log(`Permission ${p.id} is for different key: ${p.keyPublicKey.slice(0, 10)}...`);
     }
     
     return isNotExpired && isBackendKey;
@@ -144,7 +122,7 @@ export function findActivePermissionForBackendKey(params: {
   // Return the most recent one
   const mostRecent = activePermissions.sort((a, b) => b.grantedAt - a.grantedAt)[0];
   
-  console.log(`✅ Found active permission ${mostRecent.id} for backend key`);
+  console.log(`Found active permission ${mostRecent.id} for backend key`);
   return mostRecent;
 }
 
@@ -207,7 +185,7 @@ export function cleanupExpiredPermissions(): number {
     const beforeCount = user.permissions.length;
     user.permissions = user.permissions.filter(p => {
       if (p.expiry <= now) {
-        console.log(`🧹 Removing expired permission ${p.id} (expired at ${new Date(p.expiry * 1000)})`);
+        console.log(`Removing expired permission ${p.id} (expired at ${new Date(p.expiry * 1000)})`);
         removedCount++;
         return false;
       }
@@ -217,7 +195,7 @@ export function cleanupExpiredPermissions(): number {
   
   if (removedCount > 0) {
     writePermissionsFile(allUsers);
-    console.log(`✅ Cleaned up ${removedCount} expired permissions`);
+    console.log(`Cleaned up ${removedCount} expired permissions`);
   }
   
   return removedCount;
@@ -238,7 +216,7 @@ export function revokePermission(params: {
   );
 
   if (!userRecord) {
-    console.log(`❌ No user record found for ${walletAddress}`);
+    console.log(`No user record found for ${walletAddress}`);
     return false;
   }
 
@@ -265,7 +243,7 @@ export function debugListPermissions(): void {
   const allUsers = readPermissionsFile();
   const now = Date.now() / 1000;
 
-  console.log("\n📋 Stored Permissions Debug:");
+  console.log("\nStored Permissions Debug:");
   console.log("=" .repeat(50));
 
   if (allUsers.length === 0) {

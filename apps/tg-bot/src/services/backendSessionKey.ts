@@ -27,7 +27,7 @@ export function getOrCreateBackendSessionKey(params: {
     permissions,
   });
 
-  console.log(`🔑 Created backend P256 session key:`, {
+  console.log(`Created backend P256 session key:`, {
     publicKey: backendSessionKey.publicKey,
     type: backendSessionKey.type,
     role: backendSessionKey.role,

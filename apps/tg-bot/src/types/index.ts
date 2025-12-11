@@ -1,42 +1,18 @@
-import type { Address } from "viem";
+/**
+ * Central type definitions for the RISE Telegram Bot
+ *
+ * This file re-exports all types from domain-specific modules
+ * for easy importing across the application.
+ */
 
-export type Period = "minute" | "hour" | "day" | "week" | "month" | "year";
+// Transaction types
+export * from "./transactions.js";
 
-export type TransactionCall = {
-  to: Address;
-  data?: `0x${string}`;
-  value?: bigint;
-};
+// Permission types
+export * from "./permissions.js";
 
-export type SpendPermission = {
-  token?: Address;
-  limit: string; // hex string wei
-  period: Period;
-};
+// Swap types
+export * from "./swap.js";
 
-export type CallPermission = {
-  to?: Address;
-  signature?: string;
-};
-
-export type PermissionTemplate = {
-  id: string;
-  label: string;
-  description: string;
-  feeTokenSymbol?: string;
-  defaultExpirySeconds: number;
-  spend?: SpendPermission[];
-  calls?: CallPermission[];
-};
-
-// Simple permission templates for the bot
-export const PERMISSION_TEMPLATES: PermissionTemplate[] = [
-  {
-    id: "custom",
-    label: "Custom Permissions",
-    description: "User-defined permissions from the frontend",
-    defaultExpirySeconds: 7 * 24 * 60 * 60, // 1 week
-    spend: [],
-    calls: [],
-  },
-];
+// LLM types
+export * from "./llm.js";

@@ -1,12 +1,12 @@
 import OpenAI from "openai";
-import { apiCaller } from "../tools/apiCaller.js";
+import { readTools } from "../tools/readTools.js";
 import { eventWatcher } from "../tools/eventWatcher.js";
 import { getVerifiedAccount } from "../services/verification.js";
 import { backendSwapService, TOKENS } from "../services/backendSwapService.js";
 import { backendTransactionService } from "../services/backendTransactionService.js";
-import { z } from "zod";
 import { Address, parseUnits, encodeFunctionData } from "viem";
 import { MintableERC20ABI } from "../abi/erc20.js";
+import { ToolCallSchema } from "../types/index.js";
 
 // OpenRouter configuration
 const openai = new OpenAI({
@@ -14,98 +14,18 @@ const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
 });
 
-// Tool schemas for structured outputs
-const ToolCallSchema = z.discriminatedUnion("tool", [
-  // Transaction tools
-  z.object({
-    tool: z.literal("mint"),
-    params: z.object({
-      tokenSymbol: z.enum(["MockUSD", "MockToken"]),
-    }),
-  }),
-  z.object({
-    tool: z.literal("transfer"),
-    params: z.object({
-      tokenSymbol: z.enum(["RISE", "MockUSD", "MockToken"]),
-      to: z.string(),
-      amount: z.string(),
-    }),
-  }),
-  z.object({
-    tool: z.literal("swap"),
-    params: z.object({
-      fromToken: z.enum(["MockUSD", "MockToken"]),
-      toToken: z.enum(["MockUSD", "MockToken"]),
-      amount: z.string(),
-      recipient: z.string().optional(),
-      slippagePercent: z.number().optional(),
-    }),
-  }),
-  // Query tools
-  z.object({
-    tool: z.literal("get_balances"),
-    params: z.object({
-      address: z.string(),
-    }),
-  }),
-  z.object({
-    tool: z.literal("get_transactions"),
-    params: z.object({
-      address: z.string(),
-      limit: z.number().optional(),
-    }),
-  }),
-  z.object({
-    tool: z.literal("get_positions"),
-    params: z.object({
-      address: z.string(),
-    }),
-  }),
-  z.object({
-    tool: z.literal("get_wallet_summary"),
-    params: z.object({
-      address: z.string(),
-    }),
-  }),
-  // Alert tools
-  z.object({
-    tool: z.literal("create_alert"),
-    params: z.object({
-      type: z.enum(["balance_threshold", "new_transaction", "price_change", "position_change"]),
-      config: z.object({
-        address: z.string().optional(),
-        token: z.string().optional(),
-        threshold: z.number().optional(),
-        direction: z.enum(["above", "below"]).optional(),
-      }),
-    }),
-  }),
-  z.object({
-    tool: z.literal("list_alerts"),
-    params: z.object({}),
-  }),
-  z.object({
-    tool: z.literal("remove_alert"),
-    params: z.object({
-      alertId: z.string(),
-    }),
-  }),
-]);
-
-type ToolCall = z.infer<typeof ToolCallSchema>;
-
 function getErrorResponse(errorType: string | undefined, errorMsg: any): string {
   if (errorType === 'expired_session') {
-    return `⚠️ Your session key has expired. Please renew your permissions:\nhttps://rise-bot.com/grant`;
+    return `Your session key has expired. Please renew your permissions:\nhttps://rise-bot.com/grant`;
   } else if (errorType === 'no_permission') {
-    return `⚠️ You haven't granted permission for this action yet. Please grant permissions:\nhttps://rise-bot.com/grant`;
+    return `You haven't granted permission for this action yet. Please grant permissions:\nhttps://rise-bot.com/grant`;
   } else if (errorType === 'unauthorized') {
-    return `⛔ Unauthorized: You don't have the required permissions for this action. Please update your permissions:\nhttps://rise-bot.com/grant`;
+    return `Unauthorized: You don't have the required permissions for this action. Please update your permissions:\nhttps://rise-bot.com/grant`;
   }
   return `❌ Transaction failed: ${errorMsg instanceof Error ? errorMsg.message : String(errorMsg)}`;
 }
 
-export function createLlmRouter() {0
+export function createLlmRouter() {
   return {
     async handleMessage(opts: { 
       telegramId: string; 
@@ -126,6 +46,9 @@ export function createLlmRouter() {0
                 User identity is bound to a RISE account: ${userAddress || "address not provided"}
                 
                 Available tools and their required JSON format:
+
+                Get user address:
+                {"tool":"get_address", "params": {}}
                 
                 Swap tokens:
                 {"tool": "swap", "params": {"fromToken": "MockUSD"|"MockToken", "toToken": "MockUSD"|"MockToken", "amount": "10.5", "slippagePercent": 0.5}}
@@ -167,12 +90,12 @@ export function createLlmRouter() {0
           return "Sorry, I couldn't understand your request. Please try again.";
         }
 
-        console.log("🤖 LLM Raw Response:", content);
+        console.log("LLM Raw Response:", content);
         
         let parsedJson;
         try {
           parsedJson = JSON.parse(content);
-          console.log("📊 Parsed JSON:", parsedJson);
+          console.log("Parsed JSON:", parsedJson);
         } catch (parseError) {
           console.error("❌ Failed to parse JSON:", parseError);
           return "Sorry, I received an invalid response format. Please try again.";
@@ -180,15 +103,21 @@ export function createLlmRouter() {0
 
         const parsed = ToolCallSchema.parse(parsedJson);
 
-        // Handle query tools
+        if (parsed.tool === "get_address") {
+          if (!userAddress) {
+            return " Your wallet is not linked yet. Use /link to connect your wallet.";
+          }
+          return `Your wallet address: ${userAddress}`;
+        }
+
         if (parsed.tool === "get_balances") {
-          const resultString = await apiCaller.getBalances.execute({
+          const resultString = await readTools.getBalances.execute({
             address: parsed.params.address || userAddress || "",
           }, {
             sessionID: telegramId,
             messageID: "msg_" + Date.now(),
             agent: "telegram-bot",
-            abort: new AbortController()
+            abort: new AbortController().signal
           });
           const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
@@ -204,14 +133,14 @@ export function createLlmRouter() {0
         }
 
         if (parsed.tool === "get_transactions") {
-          const resultString = await apiCaller.getTransactionHistory.execute({
+          const resultString = await readTools.getTransactionHistory.execute({
             address: parsed.params.address || userAddress || "",
             limit: parsed.params.limit,
           }, {
             sessionID: telegramId,
             messageID: "msg_" + Date.now(),
             agent: "telegram-bot",
-            abort: new AbortController()
+            abort: new AbortController().signal
           });
           const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
@@ -236,18 +165,18 @@ export function createLlmRouter() {0
         }
 
         if (parsed.tool === "get_wallet_summary") {
-          const resultString = await apiCaller.getWalletSummary.execute({
+          const resultString = await readTools.getWalletSummary.execute({
             address: parsed.params.address || userAddress || "",
           }, {
             sessionID: telegramId,
             messageID: "msg_" + Date.now(),
             agent: "telegram-bot",
-            abort: new AbortController()
+            abort: new AbortController().signal
           });
           const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
           
-          let message = `📊 **Wallet Summary**\n`;
+          let message = `**Wallet Summary**\n`;
           if (result.success) {
             message += `Total Portfolio Value: ${result.totalValue}\n\n`;
             message += `💎 Tokens: ${result.breakdown.tokens.value} (${result.breakdown.tokens.count} tokens)\n`;
@@ -263,18 +192,12 @@ export function createLlmRouter() {0
           // Check if account is verified
           const verifiedAccount = await getVerifiedAccount(telegramId);
           if (!verifiedAccount) {
-            return "⚠️ Your account needs to be verified before executing transactions.\n\nPlease use /link to verify your wallet ownership.";
-          }
-
-          // For now, allow verified accounts to see transaction details
-          // TODO: Implement session permissions for full automation
-          if (!sessionKey) {
-            console.log("⚠️ No session key found, but account is verified. Showing transaction details instead of executing.");
+            return "Your account needs to be verified before executing transactions.\n\nPlease use /link to verify your wallet ownership.";
           }
         }
 
         if (parsed.tool === "mint") {
-          console.log(`🪙 Executing mint transaction for ${parsed.params.tokenSymbol}`);
+          console.log(`Executing mint transaction for ${parsed.params.tokenSymbol}`);
           
           const token = TOKENS[parsed.params.tokenSymbol];
           if (!token) {
@@ -298,7 +221,8 @@ export function createLlmRouter() {0
             }, userAddress as Address);
 
             if (result.success) {
-               return `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!\n\nTransaction Hash: ${result.data?.hash || "unknown"}`;
+               const txHash = result.data?.hash || "unknown";
+               return `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
             } else {
                return getErrorResponse(result.errorType, result.error);
             }
@@ -309,7 +233,7 @@ export function createLlmRouter() {0
         }
 
         if (parsed.tool === "transfer") {
-          console.log(`💸 Executing transfer of ${parsed.params.amount} ${parsed.params.tokenSymbol} to ${parsed.params.to}`);
+          console.log(`Executing transfer of ${parsed.params.amount} ${parsed.params.tokenSymbol} to ${parsed.params.to}`);
           
           try {
             let calls = [];
@@ -348,7 +272,8 @@ export function createLlmRouter() {0
             }, userAddress as Address);
 
             if (result.success) {
-               return `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!\n\nTransaction Hash: ${result.data?.hash || "unknown"}`;
+               const txHash = result.data?.hash || "unknown";
+               return `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
             } else {
                return getErrorResponse(result.errorType, result.error);
             }
@@ -359,7 +284,7 @@ export function createLlmRouter() {0
         }
 
         if (parsed.tool === "swap") {
-          console.log(`🔄 Executing swap: ${parsed.params.amount} ${parsed.params.fromToken} → ${parsed.params.toToken}`);
+          console.log(`Executing swap: ${parsed.params.amount} ${parsed.params.fromToken} → ${parsed.params.toToken}`);
           
           try {
             // Execute swap using backend service (matches wallet-demo pattern)
@@ -380,7 +305,7 @@ export function createLlmRouter() {0
             return `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key\nFinal hash: ${txHash?.slice(0, 10)}...\nCheck it on the explorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
 
           } catch (error) {
-            console.error("🔄 Swap execution error:", error);
+            console.error("Swap execution error:", error);
             return `❌ Swap failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
           }
         }
@@ -391,7 +316,7 @@ export function createLlmRouter() {0
             sessionID: telegramId,
             messageID: "msg_" + Date.now(),
             agent: "telegram-bot",
-            abort: new AbortController()
+            abort: new AbortController().signal
           });
           const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;
@@ -407,7 +332,7 @@ export function createLlmRouter() {0
             sessionID: telegramId,
             messageID: "msg_" + Date.now(),
             agent: "telegram-bot",
-            abort: new AbortController()
+            abort: new AbortController().signal
           });
           const result = JSON.parse(resultString);
           if (result.error) return `Error: ${result.error}`;

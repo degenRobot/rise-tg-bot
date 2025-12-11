@@ -44,7 +44,7 @@ export const backendSigner = {
   privateKey: BACKEND_SIGNER_PRIVATE_KEY,
 };
 
-console.log(`🔧 Backend RISE client configured with Porto.create (relay mode)`);
-console.log(`⛓️  Chain: ${Chains.riseTestnet.name} (${Chains.riseTestnet.id})`);
+console.log(`Backend RISE client configured with Porto.create (relay mode)`);
+console.log(`Chain: ${Chains.riseTestnet.name} (${Chains.riseTestnet.id})`);
 
 export { Chains };

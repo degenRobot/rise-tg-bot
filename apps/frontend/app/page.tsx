@@ -117,6 +117,7 @@ export default function Home() {
       
       setHasGrantedPermissions(true);
       setSuccess(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Error granting permissions:", err);
       setError(err.message || "Failed to grant permissions");
@@ -434,7 +435,7 @@ export default function Home() {
         {/* Footer Info */}
         <div className="pt-8 border-t border-gray-200 dark:border-gray-800 text-center">
           <p className="text-xs text-(--muted) font-mono">
-            Bot EOA: {backendKeyAddress}
+            {/* Bot EOA: {backendKeyAddress} */}
           </p>
         </div>
       </div>

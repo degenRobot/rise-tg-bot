@@ -2,7 +2,12 @@ import { type Address, type Hex, hashMessage, getAddress } from "viem";
 import { verifyMessage, verifyHash } from "viem/actions";
 import { z } from "zod";
 import { risePublicClient } from "../config/backendRiseClient.js";
-import { storage } from './storage.js';
+import {
+  saveVerifiedLink,
+  getVerifiedLink,
+  revokeVerifiedLink,
+  type VerifiedLink,
+} from './verifiedLinksStore.js';
 
 // Verification message schema
 export const VerificationMessageSchema = z.object({
@@ -14,17 +19,8 @@ export const VerificationMessageSchema = z.object({
 
 export type VerificationMessage = z.infer<typeof VerificationMessageSchema>;
 
-// Verified link schema
-export interface VerifiedLink {
-  id: string;
-  telegramId: string;
-  telegramHandle: string;
-  accountAddress: Address;
-  verifiedAt: Date;
-  signature: string;
-  messageHash: string;
-  active: boolean;
-}
+// Re-export VerifiedLink type for convenience
+export type { VerifiedLink };
 
 /**
  * Generate a verification message for the user to sign
@@ -49,16 +45,6 @@ export function createVerificationMessage(
   return { message, data };
 }
 
-// Check if address is a smart contract
-async function isContract(address: Address): Promise<boolean> {
-  try {
-    const code = await risePublicClient.getBytecode({ address });
-    return !!code && code !== '0x';
-  } catch (error) {
-    console.error("Failed to check if address is contract:", error);
-    return false;
-  }
-}
 
 // Verify signature using viem's universal verification
 async function verifySignatureWithViem(
@@ -118,43 +104,13 @@ export async function verifyAndLinkAccount(params: {
       signatureLength: params.signature.length
     });
 
-    // Check if this is a smart wallet or EOA
-    const isSmartWallet = await isContract(params.address);
-    console.log("Is smart wallet:", isSmartWallet);
-
-    let isValid = false;
-
-    // Use viem's built-in verification
-    isValid = await verifySignatureWithViem(
+    // Verify signature using viem (handles both EOA and smart wallets via EIP-1271)
+    const isValid = await verifySignatureWithViem(
       params.address,
       params.message,
       params.signature
     );
     
-    // Temporary fallback for RISE wallet signatures while debugging
-    if (!isValid && isSmartWallet && params.signature.length > 1000) {
-      console.log("⚠️ Verification failed for complex smart wallet signature");
-      console.log("🔄 Using temporary fallback validation for RISE wallet signatures...");
-      
-      const hasValidFormat = (
-        params.signature.startsWith('0x') && 
-        params.signature.length > 1000 &&
-        !params.signature.match(/^0x0+$/)
-      );
-      
-      const hasValidMessage = (
-        params.message.includes('RISE Telegram Bot Verification') &&
-        params.message.includes(params.telegramHandle) &&
-        params.message.includes(params.telegramId)
-      );
-      
-      if (hasValidFormat && hasValidMessage) {
-        console.log("✅ Fallback validation passed - treating as valid RISE wallet signature");
-        isValid = true;
-      } else {
-        console.log("❌ Fallback validation failed");
-      }
-    }
 
     if (!isValid) {
       return { success: false, error: "Invalid signature - signature verification failed" };
@@ -182,11 +138,11 @@ export async function verifyAndLinkAccount(params: {
     }
 
     // Check for existing link
-    const existingLink = await storage.getVerifiedLink(params.telegramId);
+    const existingLink = getVerifiedLink(params.telegramId);
     if (existingLink && existingLink.active) {
       // Deactivate old link
       existingLink.active = false;
-      await storage.saveVerifiedLink(existingLink);
+      saveVerifiedLink(existingLink);
     }
 
     // Store new verified link
@@ -202,7 +158,7 @@ export async function verifyAndLinkAccount(params: {
       active: true,
     };
 
-    await storage.saveVerifiedLink(verifiedLink);
+    saveVerifiedLink(verifiedLink);
 
     return { success: true };
   } catch (error) {
@@ -215,7 +171,7 @@ export async function verifyAndLinkAccount(params: {
  * Get verified account for a Telegram user
  */
 export async function getVerifiedAccount(telegramId: string): Promise<VerifiedLink | null> {
-  const link = await storage.getVerifiedLink(telegramId);
+  const link = getVerifiedLink(telegramId);
   return link && link.active ? link : null;
 }
 
@@ -231,5 +187,5 @@ export async function isAccountVerified(telegramId: string): Promise<boolean> {
  * Revoke account verification
  */
 export async function revokeVerification(telegramId: string): Promise<boolean> {
-  return await storage.revokeVerifiedLink(telegramId);
+  return revokeVerifiedLink(telegramId);
 }

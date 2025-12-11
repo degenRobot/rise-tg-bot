@@ -1,12 +1,12 @@
 import type { Express, Request, Response } from "express";
 import type { Address } from "viem";
 import { P256 } from "ox";
-import { PERMISSION_TEMPLATES } from "../types/index.js";
-import { 
-  createVerificationMessage, 
-  verifyAndLinkAccount, 
+import type { StoredPermission } from "../types/index.js";
+import {
+  createVerificationMessage,
+  verifyAndLinkAccount,
   getVerifiedAccount,
-  revokeVerification 
+  revokeVerification
 } from "../services/verification.js";
 import {
   storePermission,
@@ -16,7 +16,6 @@ import {
   cleanupExpiredPermissions,
   debugListPermissions,
   revokePermission,
-  type StoredPermission
 } from "../services/permissionStore.js";
 
 const backendKeyAddress = process.env.BACKEND_SIGNER_ADDRESS as Address;
@@ -55,7 +54,6 @@ export function registerPermissionRoutes(app: Express) {
   app.get("/api/permissions/config", (_req: Request, res: Response) => {
     res.json({
       backendKeyAddress: getBackendP256PublicKey(), // Return P256 public key, not EOA address
-      templates: PERMISSION_TEMPLATES,
     });
   });
 

@@ -1,10 +1,21 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { resolve } from "path";
 import OpenAI from "openai";
 import { z } from "zod";
 import type { Address } from "viem";
 
+// Load .env from monorepo root
+config({ path: resolve(process.cwd(), "../../.env") });
+
 // Test address
 const TEST_ADDRESS = "0x07b780E6D4D7177bd596e7caBf2725a471E685Dc" as Address;
+
+// Check for API key
+if (!process.env.OPENROUTER_API_KEY) {
+  console.log("⚠️  Skipping LLM routing tests - OPENROUTER_API_KEY not set");
+  console.log("Make sure .env is in the monorepo root with OPENROUTER_API_KEY");
+  process.exit(0);
+}
 
 // Initialize OpenRouter with different models
 const openaiGPT4 = new OpenAI({
@@ -171,23 +182,45 @@ async function testLLMRouting(model: string, modelName: string) {
             role: "system",
             content: `You are a transaction router for the RISE chain Telegram bot. Analyze user prompts and select the appropriate tool.
 
-Available tools:
-1. mint: Mint MockUSD or MockToken test tokens
-2. transfer: Send RISE (native), MockUSD, or MockToken to another address
-3. swap: Exchange between MockUSD and MockToken using UniswapV2
-4. get_balances: Check token balances for an address
-5. get_transactions: View recent transaction history
-6. get_wallet_summary: Get total portfolio value across tokens and DeFi
+User's wallet address: ${TEST_ADDRESS}
 
-Important rules:
-- For transaction tools (mint, transfer, swap), verify the user has provided necessary parameters
-- For queries without explicit address, use the user's address: ${TEST_ADDRESS}
-- If no tool matches, use "no_tool" and provide reasoning and suggested response
-- Include reasoning for your choice
+Available tools:
+1. mint: Mint test tokens
+   Required params: tokenSymbol (must be exactly "MockUSD" or "MockToken")
+
+2. transfer: Send tokens to another address
+   Required params:
+   - tokenSymbol: must be exactly "RISE", "MockUSD", or "MockToken"
+   - to: recipient address (0x... format)
+   - amount: must be a string representing a decimal number (e.g. "10", "5.5", "0.1")
+
+3. swap: Exchange tokens
+   Required params:
+   - fromToken: must be exactly "MockUSD" or "MockToken"
+   - toToken: must be exactly "MockUSD" or "MockToken"
+   - amount: must be a string representing a decimal number (e.g. "10", "42.5")
+   Optional: slippagePercent (number), recipient (address)
+
+4. get_balances: Check token balances
+   Required params: address (use ${TEST_ADDRESS} if not specified)
+
+5. get_transactions: View transaction history
+   Required params: address (use ${TEST_ADDRESS} if not specified)
+   Optional: limit (number)
+
+6. get_wallet_summary: Get total portfolio value
+   Required params: address (use ${TEST_ADDRESS} if not specified)
+
+CRITICAL RULES:
+- ALL amount values MUST be strings, never numbers (e.g. "10" not 10, "5.5" not 5.5)
+- Token names MUST match exactly: "MockUSD", "MockToken", "RISE"
+- If user says vague amounts like "all", "half", "some", return no_tool with explanation
+- ALL required params MUST be present - do not skip any
+- If unsure about any parameter, use no_tool
 
 Return a JSON object with:
 - tool: The selected tool name (or "no_tool")
-- params: Parameters for the tool
+- params: Object with ALL required parameters (with correct types)
 - reasoning: Brief explanation of why you chose this tool
 - suggested_response: (only for no_tool) What to tell the user`
           },
@@ -240,12 +273,12 @@ Return a JSON object with:
       results.push({
         prompt: test.prompt,
         expectedTool: test.expectedTool,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         correct: false
       });
-      
+
       log(`❌ Error for prompt: "${test.prompt}"`, {
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -302,7 +335,7 @@ async function testComplexPromptParsing() {
   for (const test of complexPrompts) {
     try {
       const response = await openaiGPT4.chat.completions.create({
-        model: "openrouter/sherlock-think-alpha",
+        model: "openai/gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -331,17 +364,30 @@ Return JSON with tool name and params.`
       });
 
       const parsed = JSON.parse(response.choices[0].message.content!);
-      
+
+      // Compare only the fields that are in expected
+      const actualParams: Record<string, any> = { tool: parsed.tool, ...parsed.params };
+      const expectedParams: Record<string, any> = test.expected;
+      const matches = Object.keys(expectedParams).every(key => {
+        const actual = actualParams[key];
+        const expected = expectedParams[key];
+        // Case-insensitive comparison for strings
+        if (typeof actual === 'string' && typeof expected === 'string') {
+          return actual.toLowerCase() === expected.toLowerCase();
+        }
+        return actual === expected;
+      });
+
       log(`Complex Prompt: "${test.prompt}"`, {
         extracted: parsed,
         expected: test.expected,
-        paramsMatch: JSON.stringify(parsed.params) === JSON.stringify(test.expected)
+        paramsMatch: matches
       });
       
     } catch (error) {
       log("Error parsing complex prompt", {
         prompt: test.prompt,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -354,7 +400,6 @@ async function testModelComparison() {
 
   const models = [
     { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-    { id: "openrouter/sherlock-think-alpha", name: "Sherlock Think Alpha" },
     { id: "anthropic/claude-3-haiku", name: "Claude 3 Haiku" }
   ];
 
@@ -374,7 +419,7 @@ async function testModelComparison() {
 
   for (const model of models) {
     try {
-      console.log(`\n\n🤖 Testing ${model.name}...`);
+      console.log(`\n\nTesting ${model.name}...`);
       const results = await testLLMRouting(model.id, model.name);
       allResults.push({
         model: model.name,
@@ -384,7 +429,7 @@ async function testModelComparison() {
       // Add delay to respect rate limits
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
-      log(`Error testing ${model.name}`, { error: error.message });
+      log(`Error testing ${model.name}`, { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -399,7 +444,7 @@ async function testModelComparison() {
 }
 
 async function runAllTests() {
-  console.log("🧠 RISE TG Bot - LLM Routing Tests\n");
+  console.log("RISE TG Bot - LLM Routing Tests\n");
   
   if (!process.env.OPENROUTER_API_KEY) {
     console.error("❌ OPENROUTER_API_KEY not set in environment");

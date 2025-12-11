@@ -1,29 +1,9 @@
-import type { Address, Hex } from "viem";
+import type { Address } from "viem";
 import { portoClient } from "../config/backendRiseClient.js";
 import { findActivePermissionForBackendKey, findPermissionForBackendKey } from "./permissionStore.js";
 import { getOrCreateBackendSessionKey, getBackendP256PublicKey } from "./backendSessionKey.js";
 import * as RelayActions from "rise-wallet/viem/RelayActions";
-
-export type Call = {
-  to: Address;
-  data?: Hex;
-  value?: bigint;
-};
-
-export type ExecutionErrorType =
-  | "expired_session"
-  | "unauthorized"
-  | "no_permission"
-  | "network_error"
-  | "unknown";
-
-export interface ExecutionResult {
-  success: boolean;
-  callsId: string;
-  transactionHashes?: string[];
-  error?: any;
-  errorType?: ExecutionErrorType;
-}
+import type { Call, ExecutionResult, ExecutionErrorType } from "../types/index.js";
 
 /**
  * Execute transactions using stored permissions via Porto SDK
@@ -32,7 +12,7 @@ export interface ExecutionResult {
 export async function executeWithBackendPermission(params: {
   walletAddress: Address;
   calls: Call[];
-}): Promise<ExecutionResult> {
+}, retryCount = 0): Promise<ExecutionResult> {
   const { walletAddress, calls } = params;
 
   // Get the backend session key (P256)
@@ -53,35 +33,46 @@ export async function executeWithBackendPermission(params: {
     });
 
     if (!permission) {
-      // Check if it's expired
-      const expiredPermission = findPermissionForBackendKey({
-        walletAddress,
-        backendPublicKey: backendPublicKey,
-      });
-
-      if (expiredPermission && expiredPermission.expiry <= Date.now() / 1000) {
-        throw new Error("Session key expired");
-      }
-
       throw new Error(`No active permission found for backend key ${backendPublicKey.slice(0, 10)}... on wallet ${walletAddress}`);
     }
 
     console.log(`✅ Found active permission: ${permission.id}`);
 
-    // 2) Use the backend P256 session key
-    console.log("🔑 Using backend P256 session key...");
+    // 2) Use the backend session key with the permission details
+    console.log("🔑 Using backend session key with permission...");
+
+    // Create a session key with the full permission details
+    const sessionKey = {
+      ...backendSessionKey,
+      expiry: permission.expiry || backendSessionKey.expiry || 0,
+      permissions: permission.permissions, // Include the actual permissions (calls, spend)
+    };
 
     console.log(`📋 Preparing and sending calls via Rise Wallet SDK...`);
 
-    // 3) Use Rise Wallet relay actions - Porto will check permissions on-chain
+    // Log the exact calls being sent
+    const formattedCalls = calls.map(c => ({
+      to: c.to,
+      data: c.data,
+      value: c.value || 0n, // Must be bigint, not string
+    }));
+    console.log("📤 Calls being sent:", formattedCalls.map(c => ({
+      to: c.to,
+      data: c.data,
+      value: c.value.toString()
+    })));
+
+    // 3) Use Rise Wallet relay actions - the SDK handles everything
+    // Create an account object with our session key
+    const account = {
+      address: walletAddress,
+      keys: [sessionKey], // Include the session key in the account
+    } as any;
+
     const result = await RelayActions.sendCalls(portoClient, {
-      account: { address: walletAddress } as any,
-      calls: calls.map(c => ({
-        to: c.to,
-        data: c.data,
-        value: c.value,
-      })),
-      key: backendSessionKey,
+      account,
+      calls: formattedCalls,
+      // The SDK will find the session key from account.keys
     });
 
     console.log("📦 Send calls result:", result);
@@ -118,8 +109,25 @@ export async function executeWithBackendPermission(params: {
 
         console.log("📊 Calls status result:", statusResult);
 
+        // Check status code
+        if (statusResult?.status === 300) {
+          // Offchain failure - Porto rejected the transaction
+          throw new Error("Transaction rejected by wallet.");
+        } else if (statusResult?.status === 400) {
+          throw new Error("Transaction reverted completely");
+        } else if (statusResult?.status === 500) {
+          // Status 500 might be due to lazy permission registration
+          // Retry once if this is the first attempt
+          if (retryCount === 0) {
+            console.log("⚠️  Status 500 detected - retrying once (may be due to lazy permission registration)...");
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            return executeWithBackendPermission({ walletAddress, calls }, 1);
+          }
+          throw new Error("Transaction partially reverted (status 500)");
+        }
+
         // Extract transaction hash from receipts
-        if (statusResult?.receipts && Array.isArray(statusResult.receipts)) {
+        if (statusResult?.receipts && Array.isArray(statusResult.receipts) && statusResult.receipts.length > 0) {
           transactionHashes = statusResult.receipts
             .map((r: any) => r.transactionHash)
             .filter((h: any) => h);
@@ -128,8 +136,14 @@ export async function executeWithBackendPermission(params: {
           transactionHashes = [statusResult.transactionHash];
           console.log(`✅ Found transaction hash:`, transactionHashes[0]);
         }
+
+        // If no transaction hashes found, this is likely a failure
+        if (transactionHashes.length === 0 && statusResult?.status !== 100 && statusResult?.status !== 200) {
+          throw new Error(`Transaction failed with status ${statusResult?.status || 'unknown'}: No transaction hash available`);
+        }
       } catch (statusError) {
         console.log("⚠️  Could not fetch transaction status (non-critical):", statusError);
+        throw statusError;
       }
     }
 
@@ -152,7 +166,7 @@ export async function executeWithBackendPermission(params: {
     } else if (errorMessage.includes("No active permission found")) {
       errorType = "no_permission";
     } else if (errorMessage.includes("Unauthorized") || errorMessage.includes("Invalid precall") || errorMessage.includes("permission mismatch")) {
-      errorType = "unauthorized";
+      errorType = "unauthorized" as const;
        // Improve error message for unauthorized
        if (errorMessage.includes("Invalid precall")) {
         errorMessage = `Invalid precall or permission mismatch. Permission ID: ${findActivePermissionForBackendKey({
