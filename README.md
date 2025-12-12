@@ -1,6 +1,8 @@
-# RISE Telegram Bot Monorepo
+# RISE Telegram Bot
 
-A natural language crypto wallet interface for RISE blockchain, accessible through Telegram. Users can check balances, send tokens, and swap assets using simple conversational commands.
+A production-ready natural language interface for RISE blockchain via Telegram. Users control their smart wallets using conversational commands - check balances, swap tokens, and transfer assets without touching a traditional crypto interface.
+
+Built with account abstraction (Porto SDK), P256 session keys, and LLM-powered intent parsing.
 
 ## Quick Start
 
@@ -8,22 +10,41 @@ A natural language crypto wallet interface for RISE blockchain, accessible throu
 # Install dependencies
 pnpm install
 
+# Set up environment variables (see Setup section)
+cp .env.example .env
+cp apps/frontend/.env.local.example apps/frontend/.env.local
+
+# Generate P256 backend session key
+pnpm generate-key
+
+# Generate SSL certs for local HTTPS (required for WebAuthn)
+cd apps/frontend && npm run generate-certs && cd ../..
+
 # Run both frontend and bot
 pnpm dev
+```
 
-# Run with ngrok (for Telegram webhook integration)
+**For Telegram webhook integration:**
+```bash
 pnpm dev:ngrok
 ```
 
-## Project Status
+## Features
 
-✅ **Completed Features**:
-- **Natural Language Processing**: Uses LLMs (OpenRouter/GPT-4o-mini) to interpret user intent for crypto operations.
-- **Wallet Verification**: Securely links Telegram accounts to RISE wallets via signature verification.
-- **Token Operations**: Swaps, transfers, and balance queries fully implemented.
-- **Robust Error Handling**: Structured error codes and actionable user feedback (e.g., guiding users to renew expired permissions).
-- **Test Coverage**: Comprehensive Vitest suite covering core logic, relay interactions, and verification.
-- **Modern UI**: Clean, responsive frontend for permission management.
+### Core Functionality
+- ✅ **Natural Language Commands**: "swap 10 mockusd for mocktoken", "send 5 rise to 0x123...", "what's my balance"
+- ✅ **Smart Wallet Integration**: Porto SDK with session key permissions (no signatures needed per transaction)
+- ✅ **Secure Verification**: Passkey-based wallet linking via WebAuthn signatures
+- ✅ **Real-time Balances**: Direct on-chain balance queries (no stale API data)
+- ✅ **Automatic Retry**: Handles Porto lazy permission registration gracefully
+- ✅ **Uniswap V2 Swaps**: Pool liquidity checks with slippage protection
+
+### Technical Highlights
+- **P256 Session Keys**: Backend uses secp256r1 keys (not EOA secp256k1) for relay mode execution
+- **Permission System**: Granular on-chain permissions (specific contracts, spend limits, time-based expiry)
+- **LLM Routing**: GPT-4o-mini parses user intent into structured tool calls
+- **Type-Safe**: Full TypeScript with Zod validation
+- **Tested**: Vitest suite covering LLM routing, verification, swaps, and relay execution
 
 ## Overview
 
@@ -96,17 +117,21 @@ cp apps/frontend/.env.local.example apps/frontend/.env.local
     *   `OPENROUTER_API_KEY`: API key for OpenRouter (used for LLM/NLP).
     *   `RISE_CHAIN_ID`: Chain ID (e.g., `11155931` for Testnet).
 
-### 3. Backend EOA Key
+### 3. Backend P256 Session Key
 
-The bot needs a backend key to sign "pre-calls" and act as the session key holder. Generate a new EOA:
+The bot uses a **P256 (secp256r1) session key** for Porto relay mode execution. Generate one:
 
 ```bash
-cast wallet new
+pnpm generate-key
 ```
 
-Update your `.env` file with the generated private key (`BACKEND_SIGNER_PRIVATE_KEY`) and the frontend env with the address (`NEXT_PUBLIC_BACKEND_KEY_ADDRESS`).
+This creates a `.p256-key.json` file in the project root with your backend session key.
 
-⚠️ **Security Note**: Never commit private keys to version control. Use a dedicated wallet for development with no real funds.
+Copy the public key from the output and set it in:
+- **Frontend** `.env.local`: `NEXT_PUBLIC_BACKEND_KEY_ADDRESS=0x<public_key>`
+- **Bot** `.env`: The script automatically reads from `.p256-key.json`
+
+⚠️ **Security Note**: Never commit `.p256-key.json` to version control. It's already in `.gitignore`. Generate a fresh key for production.
 
 ### 4. Create Telegram Bot
 
@@ -172,8 +197,54 @@ pnpm --filter tg-bot test:watch
 - **Blockchain**: RISE Testnet, Porto Permission System (Account Abstraction).
 - **Testing**: Vitest.
 
+## For AI Agents & Developers
+
+See **[CLAUDE.md](./CLAUDE.md)** for:
+- Detailed architecture explanations
+- File-by-file breakdowns
+- Common workflows (adding tokens, tools, etc.)
+- Troubleshooting guide
+- Contract addresses and useful commands
+
+This guide helps AI agents (Claude, ChatGPT, custom LLMs) understand and work with the codebase effectively.
+
+## Deployment
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL (recommended for production vs JSON files)
+- Ngrok or similar for Telegram webhook
+- Domain with SSL for frontend
+
+### Production Checklist
+- [ ] Migrate from JSON storage to PostgreSQL
+- [ ] Set up proper logging (Winston/Pino)
+- [ ] Configure rate limiting
+- [ ] Set up monitoring (Sentry, DataDog, etc.)
+- [ ] Use secrets manager for keys (AWS Secrets Manager, Vault)
+- [ ] Set up CI/CD pipeline
+- [ ] Configure auto-scaling for bot service
+- [ ] Add analytics tracking
+
+## Security Considerations
+
+- **Never commit `.p256-key.json`** - It's your backend's private key
+- **Verify signatures** before linking Telegram accounts
+- **Check permission expiry** before executing transactions
+- **Use spend limits** to cap bot's access to user funds
+- **Audit permissions regularly** in the frontend UI
+- **Rate limit** bot commands to prevent abuse
+- **Validate all user inputs** before passing to blockchain
+
 ## Future Enhancements
 
-- **Persistent Database**: Migrate from `permissions.json` to a real database (PostgreSQL/Redis).
-- **Multi-chain Support**: Extend support to other EVM chains supported by RISE.
-- **Advanced Alerting**: Real-time notifications for on-chain events.
+- **Persistent Database**: Migrate from `permissions.json` to PostgreSQL/Redis
+- **Multi-chain Support**: Extend to other EVM chains supported by RISE
+- **Advanced Alerting**: Real-time blockchain event notifications (eventWatcher.ts is stubbed)
+- **Gas Optimization**: Batch multiple user transactions
+- **DeFi Integrations**: Lending, staking, liquidity provision
+- **Portfolio Analytics**: Track performance, PnL, position health
+
+## License
+
+MIT
