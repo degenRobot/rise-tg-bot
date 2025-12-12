@@ -54,35 +54,141 @@ This application provides a seamless bridge between Telegram and the RISE blockc
 - Execute transactions using natural language commands in Telegram.
 - Maintain security through granular permission controls and time-based expiry.
 
-## Architecture
+## System Architecture
 
-### Monorepo Structure
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                            User Devices                             │
+├─────────────────────┬───────────────────────────────────────────────┤
+│                     │                                               │
+│   Telegram App      │            Web Browser                        │
+│                     │                                               │
+└──────────┬──────────┴────────────────────┬─────────────────────────┘
+           │                               │
+           │ Natural Language              │ HTTPS
+           │ Commands                      │
+           │                               │
+┌──────────┴──────────┐         ┌──────────┴──────────────────────┐
+│                     │         │                                 │
+│  Telegram Bot API   │         │   Frontend (Next.js)            │
+│                     │         │   - Wallet Connection           │
+│                     │         │   - Permission Management       │
+│                     │         │   - Account Verification        │
+│                     │         │                                 │
+└──────────┬──────────┘         └──────────┬─────────────────────┘
+           │                               │
+           │ Webhook                       │ API Calls
+           │                               │
+┌──────────┴───────────────────────────────┴─────────────────────┐
+│                                                                │
+│                    Backend Services (Express)                  │
+│                                                                │
+│  ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐    │
+│  │   LLM Router    │  │ Verification │  │  Permission     │    │
+│  │ (Intent Parser) │  │   Service    │  │    Store        │    │
+│  └────────┬────────┘  └──────┬───────┘  └────────┬────────┘    │
+│           │                  │                    │            │
+│  ┌────────┴─────────────────┴────────────────────┴─────────┐   │
+│  │                                                         │   │
+│  │              Porto Execution Service                    │   │
+│  │         (Session Key Management & TX Relay)             │   │
+│  │                                                         │   │
+│  └────────────────────────┬────────────────────────────────┘   │
+│                           │                                    │
+└───────────────────────────┼────────────────────────────────────┘
+                            │
+                            │ Porto Relay Protocol
+                            │ (Signed Transactions)
+                            │
+┌───────────────────────────┴─────────────────────────────────────┐
+│                                                                 │
+│                       RISE Blockchain                           │
+│                                                                 │
+│  ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐     │
+│  │  Smart Wallets  │  │   UniswapV2  │  │  Mock Tokens    │     │
+│  │   (ERC-4337)    │  │    Router    │  │  (USDC, ETH)    │     │
+│  └─────────────────┘  └──────────────┘  └─────────────────┘     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-- **Frontend** (`apps/frontend`): Next.js application.
-  - Handles wallet connection using `rise-wallet` SDK.
-  - Provides a UI for users to grant specific permissions (calls, spend limits) to the bot's backend key.
-  - Generates verification signatures to link Telegram IDs to wallet addresses.
-- **Telegram Bot** (`apps/tg-bot`): Express + Telegraf server.
-  - Processes natural language messages.
-  - Manages user sessions and permissions.
-  - Executes blockchain transactions using the Porto relay and stored session keys.
+### Component Breakdown
+
+#### Frontend (`apps/frontend`)
+- **Technology**: Next.js 14, TypeScript, Tailwind CSS
+- **RISE Wallet Integration**: Uses `rise-wallet` SDK for smart wallet interactions
+- **Key Features**:
+  - WebAuthn/Passkey authentication for wallet access
+  - Permission granting UI (token limits, contract whitelist)
+  - Signature-based Telegram account verification
+  - Real-time permission status display
+
+#### Telegram Bot (`apps/tg-bot`)
+- **Technology**: Express, Telegraf, TypeScript
+- **AI Integration**: OpenRouter (GPT-4) for natural language processing
+- **Key Features**:
+  - Intent recognition from natural language
+  - Session key management with P256 cryptography
+  - Transaction execution via Porto relay
+  - File-based permission storage (upgradeable to DB)
+
+#### Points API (`points-api`)
+- Mock service simulating blockchain data queries
+- Returns portfolio data, transaction history, DeFi positions
 
 ### Key Components
 
-1.  **Relay Service** (`apps/tg-bot/src/services/relay.ts`):
-    - Custom wrapper around `rise-wallet`'s relay actions.
-    - Handles `prepareCalls` and `sendPreparedCalls` with correct capabilities for session keys.
-    - Manages `permissions.id` capability for utilizing existing grants.
-
-2.  **Porto Execution Service** (`apps/tg-bot/src/services/portoExecution.ts`):
+1.  **Porto Execution Service** (`apps/tg-bot/src/services/portoExecution.ts`):
     - Core logic for executing transactions on behalf of users.
     - Checks permission expiry and validity before execution.
     - Returns structured error types (`expired_session`, `unauthorized`, etc.) to the UI layer.
 
-3.  **LLM Router** (`apps/tg-bot/src/llm/router.ts`):
+2.  **LLM Router** (`apps/tg-bot/src/llm/router.ts`):
     - Interprets user messages (e.g., "swap 10 USDC for ETH") into structured tool calls.
     - Routes actions to appropriate services (`backendSwapService`, `backendTransactionService`).
     - Provides user-friendly responses based on execution results.
+
+## Transaction Flow
+
+### 1. Permission Setup Flow
+```
+User → Frontend → RISE Wallet → Smart Contract
+         │
+         └→ Backend API (stores permission reference)
+```
+
+1. User connects RISE wallet in frontend
+2. Frontend displays permission options (spending limits, allowed contracts)
+3. User signs transaction granting backend key permissions
+4. Permission ID and details stored in backend for later use
+
+### 2. Telegram Verification Flow
+```
+User → Frontend → Backend API → Verified Links Storage
+         │
+         └→ Signature Verification (ERC-1271)
+```
+
+1. User enters Telegram handle in frontend
+2. Frontend generates verification message
+3. User signs message with RISE wallet
+4. Backend verifies signature and stores link
+
+### 3. Transaction Execution Flow
+```
+Telegram → Bot → LLM → Porto Service → RISE Blockchain
+            │      │         │
+            │      │         └→ Session Key Signing
+            │      └→ Intent Parsing
+            └→ Natural Language Input
+```
+
+1. User sends natural language command to bot
+2. LLM parses intent and extracts parameters
+3. Bot checks permissions and prepares transaction
+4. Porto service signs with session key
+5. Transaction submitted to RISE relay
+6. User receives confirmation with TX hash
 
 ## Setup
 
@@ -189,13 +295,59 @@ pnpm --filter tg-bot test:watch
     - Transaction is submitted to the RISE Relay.
     - Bot confirms success with a transaction hash link.
 
+## RISE Wallet Features Showcased
+[DOCS](https://docs.risechain.com/docs/rise-wallet)
+
+
+This project demonstrates advanced RISE Wallet capabilities:
+
+### Smart Account Features
+- **P256 Session Keys**: Secure temporary keys using secp256r1 curve
+- **ERC-4337 Account Abstraction**: Gasless transactions for users
+- **Permission Templates**: Granular control over allowed operations
+- **Time-based Expiry**: Automatic permission revocation
+
+### Porto Relay Integration
+- **Batched Transactions**: Multiple operations in single transaction
+- **Pre-signed Calls**: Backend signs on behalf of users
+- **Gas Sponsorship**: Bot pays for user transactions
+- **Status Tracking**: Real-time transaction monitoring
+
+### Security Model
+- **No Private Key Exposure**: Users never share private keys
+- **Signature Verification**: Cryptographic proof of ownership
+- **Permission Isolation**: Each permission has unique ID
+- **Audit Trail**: All operations logged and traceable
+
 ## Technical Stack
 
-- **Frontend**: Next.js 14, Tailwind CSS, `rise-wallet` SDK, `wagmi`, `viem`.
-- **Backend**: Node.js, Express, Telegraf, `zod` (validation).
-- **AI/NLP**: OpenAI SDK connecting to OpenRouter (GPT-4o-mini).
-- **Blockchain**: RISE Testnet, Porto Permission System (Account Abstraction).
-- **Testing**: Vitest.
+- **Frontend**: 
+  - Next.js 14 (App Router)
+  - TypeScript, Tailwind CSS
+  - `rise-wallet` SDK for smart wallet integration
+  - `wagmi` + `viem` for Ethereum interactions
+  
+- **Backend**: 
+  - Node.js with Express
+  - Telegraf for Telegram bot framework
+  - TypeScript with `zod` validation
+  - File-based storage (upgradeable to DB)
+  
+- **AI/NLP**: 
+  - OpenRouter API (GPT-4 mini)
+  - Structured output parsing
+  - Intent recognition system
+  
+- **Blockchain**: 
+  - RISE Testnet
+  - Porto Permission System
+  - UniswapV2 for swaps
+  - ERC-4337 smart accounts
+  
+- **Testing**: 
+  - Vitest test runner
+  - Comprehensive test coverage
+  - Integration tests for relay
 
 ## For AI Agents & Developers
 
@@ -215,16 +367,6 @@ This guide helps AI agents (Claude, ChatGPT, custom LLMs) understand and work wi
 - PostgreSQL (recommended for production vs JSON files)
 - Ngrok or similar for Telegram webhook
 - Domain with SSL for frontend
-
-### Production Checklist
-- [ ] Migrate from JSON storage to PostgreSQL
-- [ ] Set up proper logging (Winston/Pino)
-- [ ] Configure rate limiting
-- [ ] Set up monitoring (Sentry, DataDog, etc.)
-- [ ] Use secrets manager for keys (AWS Secrets Manager, Vault)
-- [ ] Set up CI/CD pipeline
-- [ ] Configure auto-scaling for bot service
-- [ ] Add analytics tracking
 
 ## Security Considerations
 

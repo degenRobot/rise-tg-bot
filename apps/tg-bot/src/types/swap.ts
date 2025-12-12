@@ -33,7 +33,7 @@ export type SwapParams = {
 
 export type SwapResult = {
   success: boolean;
-  data: any;
-  error: any;
+  data: unknown;
+  error: Error | string | null;
   errorType?: ExecutionErrorType;
 };

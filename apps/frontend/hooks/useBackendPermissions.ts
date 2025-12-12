@@ -25,19 +25,6 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
     }
   });
 
-  // Log raw permissions structure with full details
-  console.log("🔍 [PERMISSIONS] Raw permissions from Hooks.usePermissions:", permissions);
-  console.log("🔍 [PERMISSIONS] Permissions count:", permissions?.length || 0);
-
-  // Check what IDs look like
-  if (permissions && permissions.length > 0) {
-    permissions.forEach((p: any, idx: number) => {
-      console.log(`🔍 [PERMISSION ${idx}] Full object:`, p);
-      console.log(`🔍 [PERMISSION ${idx}] ID:`, p.id, "Type:", typeof p.id);
-      console.log(`🔍 [PERMISSION ${idx}] Key:`, p.key);
-      console.log(`🔍 [PERMISSION ${idx}] Expiry:`, p.expiry, "Type:", typeof p.expiry);
-    });
-  }
 
   // Filter permissions for our backend key (match both EOA address and any derived P256 keys)
   // We show ALL permissions for now to allow cleanup
@@ -171,6 +158,8 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
 
       if (!syncResponse.ok) {
         console.error("❌ [REVOKE] Failed to sync revocation to backend:", syncData);
+        // Throw error to notify user of partial failure
+        throw new Error("Permission revoked on-chain but failed to sync with backend");
       } else {
         console.log("✅ [REVOKE] Revocation synced to backend successfully");
       }

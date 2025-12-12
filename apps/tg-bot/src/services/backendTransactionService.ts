@@ -74,14 +74,6 @@ class BackendTransactionService {
     }
   }
 
-  /**
-   * LEGACY: Execute with session key matching wallet-demo's executeWithSessionKey exactly
-   * DEPRECATED: Use execute() instead, which uses stored permissions
-   * COMMENTED OUT: This legacy method is no longer used with P256 approach
-   */
-  // async executeWithSessionKeyLegacy(calls: TransactionCall[], userAddress: Address): Promise<TransactionData> {
-  //   throw new Error("Legacy method disabled - use execute() instead");
-  // }
 
   /**
    * Get execution info (for debugging)

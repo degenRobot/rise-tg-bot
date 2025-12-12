@@ -1,9 +1,18 @@
 import type { Address } from "viem";
 import { portoClient } from "../config/backendRiseClient.js";
-import { findActivePermissionForBackendKey, findPermissionForBackendKey } from "./permissionStore.js";
+import { findActivePermissionForBackendKey } from "./permissionStore.js";
 import { getOrCreateBackendSessionKey, getBackendP256PublicKey } from "./backendSessionKey.js";
 import * as RelayActions from "rise-wallet/viem/RelayActions";
 import type { Call, ExecutionResult, ExecutionErrorType } from "../types/index.js";
+
+// Porto status codes
+const PORTO_STATUS = {
+  PENDING: 100,           // Transaction pending
+  SUCCESS: 200,           // Transaction successful
+  OFFCHAIN_FAILURE: 300,  // Porto/wallet rejected the transaction
+  ONCHAIN_REVERT: 400,    // Transaction reverted on-chain completely
+  PARTIAL_REVERT: 500     // Some calls in the batch failed
+} as const;
 
 /**
  * Execute transactions using stored permissions via Porto SDK
@@ -110,12 +119,12 @@ export async function executeWithBackendPermission(params: {
         console.log("📊 Calls status result:", statusResult);
 
         // Check status code
-        if (statusResult?.status === 300) {
+        if (statusResult?.status === PORTO_STATUS.OFFCHAIN_FAILURE) {
           // Offchain failure - Porto rejected the transaction
           throw new Error("Transaction rejected by wallet.");
-        } else if (statusResult?.status === 400) {
+        } else if (statusResult?.status === PORTO_STATUS.ONCHAIN_REVERT) {
           throw new Error("Transaction reverted completely");
-        } else if (statusResult?.status === 500) {
+        } else if (statusResult?.status === PORTO_STATUS.PARTIAL_REVERT) {
           // Status 500 might be due to lazy permission registration
           // Retry once if this is the first attempt
           if (retryCount === 0) {
@@ -138,7 +147,7 @@ export async function executeWithBackendPermission(params: {
         }
 
         // If no transaction hashes found, this is likely a failure
-        if (transactionHashes.length === 0 && statusResult?.status !== 100 && statusResult?.status !== 200) {
+        if (transactionHashes.length === 0 && statusResult?.status !== PORTO_STATUS.PENDING && statusResult?.status !== PORTO_STATUS.SUCCESS) {
           throw new Error(`Transaction failed with status ${statusResult?.status || 'unknown'}: No transaction hash available`);
         }
       } catch (statusError) {

@@ -151,8 +151,10 @@ class BackendSwapService {
 
     const calls: TransactionCall[] = [];
 
-    // 1. Approve call (approve max amount for convenience)
+    // Approve max amount for convenience
+    // TO DO -> we should get the max amount based on the permissions limit 
     const maxAmount = parseUnits("50", fromTokenInfo.decimals); 
+
     calls.push({
       to: fromTokenInfo.address,
       data: encodeFunctionData({
