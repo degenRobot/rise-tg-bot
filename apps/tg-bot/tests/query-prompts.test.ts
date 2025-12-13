@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { apiCaller } from "../src/tools/apiCaller.js";
+import { readTools } from "../src/tools/readTools.js";
 import type { Address } from "viem";
 
 // Test address from points-api
@@ -74,8 +74,14 @@ async function testBalanceQueries() {
   });
 
   try {
-    const result = await apiCaller.getBalances.execute({ address: TEST_ADDRESS });
-    
+    const resultString = await readTools.getBalances.execute({ address: TEST_ADDRESS }, {
+      sessionID: "test",
+      messageID: "test",
+      agent: "test",
+      abort: new AbortController().signal
+    });
+    const result = JSON.parse(resultString);
+
     if (result.success) {
       log("✅ Balance Query Successful", {
         totalValue: result.totalUsdValue,
@@ -97,7 +103,7 @@ async function testBalanceQueries() {
       log("❌ Balance Query Failed", result);
     }
   } catch (error) {
-    log("❌ Error in balance query", { error: error.message });
+    log("❌ Error in balance query", { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -112,11 +118,17 @@ async function testTransactionQueries() {
     const limits = [5, 10, 20];
     
     for (const limit of limits) {
-      const result = await apiCaller.getTransactionHistory.execute({ 
+      const resultString = await readTools.getTransactionHistory.execute({
         address: TEST_ADDRESS,
-        limit 
+        limit
+      }, {
+        sessionID: "test",
+        messageID: "test",
+        agent: "test",
+        abort: new AbortController().signal
       });
-      
+      const result = JSON.parse(resultString);
+
       if (result.success) {
         log(`✅ Transaction Query (limit: ${limit})`, {
           returnedCount: result.transactions.length,
@@ -138,7 +150,7 @@ async function testTransactionQueries() {
       }
     }
   } catch (error) {
-    log("❌ Error in transaction query", { error: error.message });
+    log("❌ Error in transaction query", { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -149,10 +161,16 @@ async function testPositionQueries() {
   });
 
   try {
-    const result = await apiCaller.getPortfolioPositions.execute({ 
-      address: TEST_ADDRESS 
+    const resultString = await readTools.getPortfolioPositions.execute({
+      address: TEST_ADDRESS
+    }, {
+      sessionID: "test",
+      messageID: "test",
+      agent: "test",
+      abort: new AbortController().signal
     });
-    
+    const result = JSON.parse(resultString);
+
     if (result.success) {
       log("✅ Position Query Successful", {
         positionCount: result.positions.length,
@@ -180,7 +198,7 @@ async function testPositionQueries() {
       log("❌ Position Query Failed", result);
     }
   } catch (error) {
-    log("❌ Error in position query", { error: error.message });
+    log("❌ Error in position query", { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -191,10 +209,16 @@ async function testWalletSummaryQueries() {
   });
 
   try {
-    const result = await apiCaller.getWalletSummary.execute({ 
-      address: TEST_ADDRESS 
+    const resultString = await readTools.getWalletSummary.execute({
+      address: TEST_ADDRESS
+    }, {
+      sessionID: "test",
+      messageID: "test",
+      agent: "test",
+      abort: new AbortController().signal
     });
-    
+    const result = JSON.parse(resultString);
+
     if (result.success) {
       log("✅ Wallet Summary Query Successful", {
         totalValue: result.totalValue,
@@ -212,7 +236,7 @@ async function testWalletSummaryQueries() {
       log("❌ Wallet Summary Query Failed", result);
     }
   } catch (error) {
-    log("❌ Error in wallet summary query", { error: error.message });
+    log("❌ Error in wallet summary query", { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -246,18 +270,24 @@ async function testQueryEdgeCases() {
 
   for (const testCase of edgeCases) {
     log(`Testing: ${testCase.name}`, testCase.params);
-    
+
     try {
-      const tool = apiCaller[testCase.tool];
-      const result = await tool.execute(testCase.params);
-      
+      const tool = readTools[testCase.tool as keyof typeof readTools];
+      const resultString = await tool.execute(testCase.params as any, {
+        sessionID: "test",
+        messageID: "test",
+        agent: "test",
+        abort: new AbortController().signal
+      });
+      const result = JSON.parse(resultString);
+
       log("Result", {
         success: result.success,
         error: result.error,
         hasData: !result.error
       });
     } catch (error) {
-      log("Caught error", { error: error.message });
+      log("Caught error", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 }
@@ -277,8 +307,16 @@ async function testMultipleAddresses() {
     log(`Querying address: ${address}`, {});
     
     try {
-      const balanceResult = await apiCaller.getBalances.execute({ address });
-      const summaryResult = await apiCaller.getWalletSummary.execute({ address });
+      const context = {
+        sessionID: "test",
+        messageID: "test",
+        agent: "test",
+        abort: new AbortController().signal
+      };
+      const balanceResultString = await readTools.getBalances.execute({ address }, context);
+      const summaryResultString = await readTools.getWalletSummary.execute({ address }, context);
+      const balanceResult = JSON.parse(balanceResultString);
+      const summaryResult = JSON.parse(summaryResultString);
       
       log("Query Results", {
         address,
@@ -287,7 +325,7 @@ async function testMultipleAddresses() {
         tokenCount: balanceResult.success ? balanceResult.count : 0
       });
     } catch (error) {
-      log("Error querying address", { address, error: error.message });
+      log("Error querying address", { address, error: error instanceof Error ? error.message : String(error) });
     }
   }
 }

@@ -1,7 +1,20 @@
 import { tool } from "@opencode-ai/plugin";
-import { Address } from "viem";
+import { Address, formatUnits } from "viem";
+import { risePublicClient } from "../config/backendRiseClient.js";
+import { TOKENS } from "../types/swap.js";
 
 const POINTS_API_URL = process.env.POINTS_API_URL || "https://points-api.marble.live";
+
+// ERC20 ABI for balanceOf
+const ERC20_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+] as const;
 
 export const getBalancesTool = tool({
   description: "Get token balances for a wallet address including USD values",
@@ -10,35 +23,58 @@ export const getBalancesTool = tool({
   },
   async execute(args, context) {
     try {
-      const address = args.address.toLowerCase();
-      const response = await fetch(`${POINTS_API_URL}/balances/${address}`);
-      
-      if (!response.ok) {
-        return JSON.stringify({ error: `Failed to fetch balances: ${response.statusText}` });
-      }
+      const address = args.address as Address;
 
-      const balances = await response.json();
-      
-      // Format balances for display
-      const formattedBalances = balances.map((b: any) => ({
-        token: b.symbol || b.tokenId,
-        balance: b.balanceFormatted,
-        usdValue: b.usdValue ? `$${b.usdValue.toFixed(2)}` : "N/A",
-        price: b.price ? `$${b.price.toFixed(2)}` : "N/A",
-      }));
+      // Fetch balances directly from chain using viem
+      const balances = await Promise.all(
+        Object.entries(TOKENS).map(async ([symbol, tokenInfo]) => {
+          try {
+            const balance = (await risePublicClient.readContract({
+              address: tokenInfo.address,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address],
+            })) as bigint;
 
-      const totalUsdValue = balances.reduce((sum: number, b: any) => sum + (b.usdValue || 0), 0);
+            const balanceFormatted = parseFloat(formatUnits(balance, tokenInfo.decimals));
+
+            // Hardcoded prices (same as Marble API)
+            const price = symbol === "MockUSD" ? 1 : 5;
+            const usdValue = balanceFormatted * price;
+
+            return {
+              token: symbol,
+              balance: balanceFormatted,
+              usdValue: `$${usdValue.toFixed(2)}`,
+              price: `$${price.toFixed(2)}`,
+            };
+          } catch (error) {
+            console.error(`Error fetching balance for ${symbol}:`, error);
+            return {
+              token: symbol,
+              balance: 0,
+              usdValue: "$0.00",
+              price: "N/A",
+            };
+          }
+        })
+      );
+
+      const totalUsdValue = balances.reduce((sum, b) => {
+        const value = parseFloat(b.usdValue.replace(/[$,]/g, ""));
+        return sum + value;
+      }, 0);
 
       return JSON.stringify({
         success: true,
         address,
-        balances: formattedBalances,
+        balances,
         totalUsdValue: `$${totalUsdValue.toFixed(2)}`,
         count: balances.length,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      return JSON.stringify({ error: `API error: ${errorMessage}` });
+      return JSON.stringify({ error: `Balance fetch error: ${errorMessage}` });
     }
   },
 });
@@ -59,7 +95,7 @@ export const getTransactionHistoryTool = tool({
         return JSON.stringify({ error: `Failed to fetch transactions: ${response.statusText}` });
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       const { intents, totalCount, pagination } = data;
       
       // Format transactions for display
@@ -108,7 +144,7 @@ export const getPortfolioPositionsTool = tool({
         return JSON.stringify({ error: `Failed to fetch positions: ${response.statusText}` });
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       const { positions, totalValue } = data;
       
       // Format positions for display
@@ -150,7 +186,7 @@ export const getWalletSummaryTool = tool({
         return JSON.stringify({ error: `Failed to fetch wallet summary: ${response.statusText}` });
       }
 
-      const summary = await response.json();
+      const summary = await response.json() as any;
 
       return JSON.stringify({
         success: true,
@@ -174,7 +210,21 @@ export const getWalletSummaryTool = tool({
   },
 });
 
-export const apiCaller = {
+export const getAddressTool = tool({
+  description: "Get the user's verified wallet address",
+  args: {},
+  async execute(args, context) {
+    // This returns the user's verified address
+    // The actual address resolution happens in the router based on telegramId
+    return JSON.stringify({
+      success: true,
+      message: "Address retrieval requested",
+    });
+  },
+});
+
+export const readTools = {
+  getAddress: getAddressTool,
   getBalances: getBalancesTool,
   getTransactionHistory: getTransactionHistoryTool,
   getPortfolioPositions: getPortfolioPositionsTool,

@@ -5,7 +5,7 @@
  * Wagmi connectors require browser environment, so we use direct relay for backend.
  */
 
-import { riseRelayClient, risePublicClient, backendSessionKey, Chains } from "../src/config/backendRiseClient.js";
+import { risePublicClient, portoClient } from "../src/config/backendRiseClient.js";
 import { backendTransactionService } from "../src/services/backendTransactionService.js";
 import { backendSwapService } from "../src/services/backendSwapService.js";
 import { encodeFunctionData, parseUnits } from "viem";
@@ -21,15 +21,15 @@ async function testRiseRelayClient() {
   console.log("=" + "=".repeat(60));
 
   // Test 1: Basic client connectivity
-  console.log("\n1️⃣ Testing relay client connectivity...");
+  console.log("\nTesting relay client connectivity...");
   try {
-    console.log("📡 RISE Relay Client:", {
-      client: typeof riseRelayClient,
-      transport: typeof riseRelayClient.transport,
-      hasRequest: typeof riseRelayClient.request === 'function',
+    console.log(" Porto Client:", {
+      client: typeof portoClient,
+      transport: typeof portoClient.transport,
+      hasRequest: typeof portoClient.request === 'function',
     });
 
-    console.log("📡 RISE Public Client:", {
+    console.log(" RISE Public Client:", {
       client: typeof risePublicClient,
       chain: risePublicClient.chain?.name,
       chainId: risePublicClient.chain?.id,
@@ -43,7 +43,7 @@ async function testRiseRelayClient() {
   }
 
   // Test 2: Backend session key configuration
-  console.log("\n2️⃣ Testing backend session key...");
+  console.log("\n Testing backend session key...");
   try {
     const serviceInfo = backendTransactionService.getInfo();
     console.log("✅ Transaction service info:", serviceInfo);
@@ -54,7 +54,7 @@ async function testRiseRelayClient() {
   }
 
   // Test 3: Basic blockchain connectivity 
-  console.log("\n3️⃣ Testing basic blockchain connectivity...");
+  console.log("\nTesting basic blockchain connectivity...");
   try {
     console.log("🔗 Testing chain connectivity...");
     
@@ -74,9 +74,9 @@ async function testRiseRelayClient() {
   }
 
   // Test 4: Simple transaction execution
-  console.log("\n4️⃣ Testing simple transaction execution...");
+  console.log("\n Testing simple transaction execution...");
   try {
-    console.log("🔨 Building simple approve transaction...");
+    console.log(" Building simple approve transaction...");
 
     // Build a simple approve call
     const approveData = encodeFunctionData({
@@ -90,13 +90,13 @@ async function testRiseRelayClient() {
       data: approveData,
     }];
 
-    console.log("📋 Simple calls prepared:", {
+    console.log(" Simple calls prepared:", {
       target: TEST_TOKEN_ADDRESS,
       function: "approve",
       dataLength: approveData.length,
     });
 
-    console.log("🚀 Executing via backend transaction service...");
+    console.log(" Executing via backend transaction service...");
     const result = await backendTransactionService.execute(
       {
         calls: simpleCalls,
@@ -109,7 +109,7 @@ async function testRiseRelayClient() {
 
     if (result.success) {
       console.log("✅ Simple transaction execution successful!");
-      console.log("📊 Result:", {
+      console.log(" Result:", {
         hash: result.data?.hash?.slice(0, 10) + "...",
         usedSessionKey: result.data?.usedSessionKey,
         totalTransactions: result.data?.totalTransactions,
@@ -131,9 +131,9 @@ async function testRiseRelayClient() {
   }
 
   // Test 5: Full swap execution
-  console.log("\n5️⃣ Testing full swap execution...");
+  console.log("\n Testing full swap execution...");
   try {
-    console.log(`🔄 Executing swap for user: ${TEST_USER_ADDRESS}`);
+    console.log(` Executing swap for user: ${TEST_USER_ADDRESS}`);
     
     const swapResult = await backendSwapService.executeSwap({
       fromToken: "MockUSD",
@@ -144,13 +144,13 @@ async function testRiseRelayClient() {
     });
 
     if (swapResult.success) {
-      console.log("✅ Swap execution successful!");
-      console.log("📊 Swap result:", {
+      console.log(" Swap execution successful!");
+      console.log(" Swap result:", {
         hash: swapResult.data?.hash?.slice(0, 10) + "...",
         usedSessionKey: swapResult.data?.usedSessionKey,
         totalTransactions: swapResult.data?.totalTransactions,
       });
-      console.log(`🌍 Explorer: https://testnet-explorer.riselabs.xyz/tx/${swapResult.data?.hash}`);
+      console.log(` Explorer: https://explorer.testnet.riselabs.xyz/tx/${swapResult.data?.hash}`);
     } else {
       console.error("❌ Swap execution failed:", swapResult.error);
       console.error("Error details:", {
@@ -169,14 +169,14 @@ async function testRiseRelayClient() {
     });
   }
 
-  console.log("\n🎉 RISE Relay Client test completed!");
-  console.log("\n📝 Test Summary:");
+  console.log("\n RISE Relay Client test completed!");
+  console.log("\n Test Summary:");
   console.log("- Relay client initialization: ✅");
   console.log("- Session key configuration: ✅");
   console.log("- Basic blockchain connectivity: ✅");
   console.log("- Transaction execution: ⚡ Tested");
   console.log("- Swap execution: ⚡ Tested");
-  console.log("\n🔑 Direct relay client approach with wallet-demo parameters!");
+  console.log("\n Direct relay client approach with wallet-demo parameters!");
 }
 
 // Run the test

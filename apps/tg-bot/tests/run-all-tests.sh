@@ -26,11 +26,18 @@ fi
 
 # Array of test files
 tests=(
-  "test-swap-prompts.ts"
-  "test-query-prompts.ts"
-  "test-llm-routing.ts"
-  "test-edge-cases.ts"
-  "test-improved-router.ts"
+  "basic.test.ts"
+  "backend-swap.test.ts"
+  "smart-wallet-verification.test.ts"
+  "tools.test.ts"
+  "api-endpoints.test.ts"
+  "query-prompts.test.ts"
+  "llm-routing.test.ts"
+  "permission-execution.test.ts"
+  "rise-relay-client.test.ts"
+  "nonce-generation.test.ts"
+  "swap-approval.test.ts"
+  "e2e.test.ts"
 )
 
 # Track results
@@ -70,9 +77,9 @@ echo -e "${GREEN}Passed: ${passed_tests}${NC}"
 echo -e "${RED}Failed: ${failed_tests}${NC}"
 
 if [ ${failed_tests} -eq 0 ]; then
-  echo -e "\n${GREEN}🎉 All tests passed!${NC}"
+  echo -e "\n${GREEN}All tests passed!${NC}"
   exit 0
 else
-  echo -e "\n${RED}❌ Some tests failed${NC}"
+  echo -e "\n${RED}Some tests failed${NC}"
   exit 1
 fi

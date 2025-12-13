@@ -1,45 +1,18 @@
-import { Address, encodeFunctionData, parseUnits } from "viem";
-import { backendTransactionService, TransactionCall } from "./backendTransactionService.js";
+import { Address, encodeFunctionData, parseUnits, getContract } from "viem";
+import { backendTransactionService } from "./backendTransactionService.js";
 import { MintableERC20ABI } from "../abi/erc20.js";
 import { UniswapV2RouterABI } from "../abi/swap.js";
-import { ExecutionErrorType } from "./portoExecution.js";
-
-// Token configuration (matching our testnet setup)
-export const TOKENS = {
-  MockUSD: {
-    address: "0x044b54e85D3ba9ae376Aeb00eBD09F21421f7f50" as Address,
-    decimals: 18,
-    symbol: "MockUSD",
-  },
-  MockToken: {
-    address: "0x6166a6e02b4CF0e1E0397082De1B4fc9CC9D6ceD" as Address,
-    decimals: 18,
-    symbol: "MockToken",
-  },
-};
+import { risePublicClient } from "../config/backendRiseClient.js";
+import { TOKENS } from "../types/index.js";
+import type { TransactionCall, SwapParams, SwapResult } from "../types/index.js";
+export { TOKENS };
 
 // Uniswap contracts
 const UNISWAP_ROUTER = "0x6c10B45251F5D3e650bcfA9606c662E695Af97ea" as Address;
 
-export type SwapParams = {
-  fromToken: keyof typeof TOKENS;
-  toToken: keyof typeof TOKENS;
-  amount: string;
-  userAddress: Address;
-  slippagePercent?: number;
-};
-
-export type SwapResult = {
-  success: boolean;
-  data: any;
-  error: any;
-  errorType?: ExecutionErrorType;
-};
-
 /**
  * Backend Swap Service
  * 
- * Follows the exact useSwap pattern from wallet-demo but in backend context.
  * Uses backendTransactionService for execution.
  */
 class BackendSwapService {
@@ -49,16 +22,59 @@ class BackendSwapService {
    */
   async executeSwap(params: SwapParams): Promise<SwapResult> {
     const { fromToken, toToken, amount, userAddress, slippagePercent = 0.5 } = params;
-    
-    console.log(`🔄 Backend Swap: Executing swap`);
+
+    console.log(`Executing swap`);
     console.log(`   ${amount} ${fromToken} → ${toToken}`);
     console.log(`   User: ${userAddress}`);
-    console.log(`   Slippage: ${slippagePercent}%`);
+    console.log (`  Slippage (not used): ${slippagePercent}`)
 
     try {
-      // Build transaction calls (matching wallet-demo pattern)
-      const calls = this.buildSwapCalls(params);
-      console.log(`📋 Built ${calls.length} transaction calls`);
+      // Check liquidity and get expected output before attempting swap
+      const fromTokenInfo = TOKENS[fromToken];
+      const toTokenInfo = TOKENS[toToken];
+      const amountIn = parseUnits(amount, fromTokenInfo.decimals);
+
+      console.log(`Checking pool liquidity for ${fromToken}/${toToken}...`);
+
+      let expectedOut: bigint | undefined;
+
+      try {
+        const routerContract = getContract({
+          address: UNISWAP_ROUTER,
+          abi: UniswapV2RouterABI,
+          client: risePublicClient,
+        });
+
+        const amountsOut = await routerContract.read.getAmountsOut([
+          amountIn,
+          [fromTokenInfo.address, toTokenInfo.address]
+        ]);
+
+        expectedOut = amountsOut[1];
+
+        console.log(`Pool liquidity check:`, {
+          amountIn: amount + " " + fromToken,
+          amountInWei: amountIn.toString(),
+          expectedOut: expectedOut.toString(),
+          expectedOutFormatted: (Number(expectedOut) / 1e18).toFixed(4) + " " + toToken,
+          hasLiquidity: expectedOut > 0n
+        });
+
+        if (expectedOut === 0n) {
+          return {
+            success: false,
+            data: null,
+            error: `No liquidity in ${fromToken}/${toToken} pool! Expected output is 0. Please add liquidity to the pool first.`,
+            errorType: "unknown"
+          };
+        }
+      } catch (liquidityError) {
+        console.warn(`Could not check liquidity (continuing anyway):`, liquidityError);
+      }
+
+      // Build transaction calls with actual expected output (if available)
+      const calls = this.buildSwapCalls({ ...params, expectedOut });
+      console.log(`Built ${calls.length} transaction calls`);
 
       // Get required permissions for calls
       const requiredPermissions = {
@@ -106,19 +122,39 @@ class BackendSwapService {
    * This replicates the call building logic from useSwap.ts
    */
   private buildSwapCalls(params: SwapParams): TransactionCall[] {
-    const { fromToken, toToken, amount, userAddress, slippagePercent = 0.5 } = params;
-    
+    const { fromToken, toToken, amount, userAddress, slippagePercent = 0.5, expectedOut } = params;
+
     const fromTokenInfo = TOKENS[fromToken];
     const toTokenInfo = TOKENS[toToken];
-    
+
     const amountIn = parseUnits(amount, fromTokenInfo.decimals);
-    const amountOutMin = (amountIn * BigInt(Math.floor((100 - slippagePercent) * 100))) / 10000n;
+
+    // Calculate amountOutMin from actual AMM quote (not from input amount)
+    // This ensures slippage protection is based on expected output, not input
+    let amountOutMin: bigint;
+    if (expectedOut && expectedOut > 0n) {
+      // Use actual pool quote with slippage protection
+      amountOutMin = (expectedOut * BigInt(Math.floor((100 - slippagePercent) * 100))) / 10000n;
+      console.log(`Using actual pool quote for slippage:`, {
+        expectedOut: expectedOut.toString(),
+        slippage: `${slippagePercent}%`,
+        amountOutMin: amountOutMin.toString(),
+        formatted: `${(Number(amountOutMin) / 1e18).toFixed(4)} ${toToken}`
+      });
+    } else {
+      // No pool quote available - use minimal slippage protection (1% of input)
+      amountOutMin = amountIn / 100n;
+      console.warn(`⚠️  No pool quote available, using minimal protection: ${amountOutMin.toString()}`);
+    }
+
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200); // 20 minutes
 
     const calls: TransactionCall[] = [];
 
-    // 1. Approve call (matching wallet-demo - approve max amount for convenience)
-    const maxAmount = parseUnits("50", fromTokenInfo.decimals); // Match wallet-demo limit
+    // Approve max amount for convenience
+    // TO DO -> we should get the max amount based on the permissions limit 
+    const maxAmount = parseUnits("50", fromTokenInfo.decimals); 
+
     calls.push({
       to: fromTokenInfo.address,
       data: encodeFunctionData({
@@ -142,21 +178,6 @@ class BackendSwapService {
           deadline,
         ],
       }),
-    });
-
-    console.log("🔨 Built swap calls:", {
-      approve: {
-        token: fromTokenInfo.symbol,
-        spender: "Uniswap Router",
-        amount: "50 (max)",
-      },
-      swap: {
-        amountIn: amount,
-        fromToken: fromTokenInfo.symbol,
-        toToken: toTokenInfo.symbol,
-        recipient: userAddress,
-        slippage: `${slippagePercent}%`,
-      },
     });
 
     return calls;

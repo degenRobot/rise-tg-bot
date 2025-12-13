@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { executeWithBackendPermission, Call } from './portoExecution';
 import * as permissionStore from './permissionStore';
-import * as RelayService from './relay';
 import * as Key from 'rise-wallet/viem/Key';
 import { Address } from 'viem';
 
@@ -11,22 +10,22 @@ vi.mock('./permissionStore', () => ({
   findPermissionForBackendKey: vi.fn(),
 }));
 
-vi.mock('./relay', () => ({
-  prepareCalls: vi.fn(),
-  sendPreparedCalls: vi.fn(),
-}));
-
 vi.mock('rise-wallet/viem/Key', () => ({
   fromP256: vi.fn(),
-  sign: vi.fn(),
 }));
 
-// Mock config
-vi.mock('../config/backendRiseClient.js', () => ({
-  riseRelayClient: {
-    chain: { id: 11155931 },
-  },
+// Mock RelayActions
+vi.mock('rise-wallet/viem/RelayActions', () => ({
+  sendCalls: vi.fn(),
 }));
+
+// Mock Porto client
+vi.mock('../config/backendRiseClient.js', () => ({
+  portoClient: {},
+}));
+
+// Import the mocked modules
+import * as RelayActions from 'rise-wallet/viem/RelayActions';
 
 describe('PortoExecution Service', () => {
   const mockWalletAddress = '0xuser' as Address;
@@ -41,10 +40,13 @@ describe('PortoExecution Service', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Default mocks
-    (Key.fromP256 as any).mockReturnValue({ publicKey: '0xpub', type: 'p256' });
-    (Key.sign as any).mockResolvedValue('0xsignature');
+    (Key.fromP256 as any).mockReturnValue({
+      publicKey: '0xpub',
+      type: 'p256',
+      permissions: { id: '0xperm' }
+    });
   });
 
   it('should execute successfully when permission is active', async () => {
@@ -54,16 +56,10 @@ describe('PortoExecution Service', () => {
       expiry: Date.now() / 1000 + 3600, // 1 hour future
     });
 
-    // Mock prepareCalls success
-    (RelayService.prepareCalls as any).mockResolvedValue({
-      context: { some: 'context' },
-      digest: '0xdigest',
-    });
-
-    // Mock sendPreparedCalls success
-    (RelayService.sendPreparedCalls as any).mockResolvedValue([
+    // Mock sendCalls success
+    vi.mocked(RelayActions.sendCalls).mockResolvedValue([
       { hash: '0xtxhash', id: '0xcallsid' }
-    ]);
+    ] as any);
 
     const result = await executeWithBackendPermission({
       walletAddress: mockWalletAddress,
@@ -74,8 +70,8 @@ describe('PortoExecution Service', () => {
     expect(result.success).toBe(true);
     expect(result.callsId).toBe('0xcallsid');
     expect(result.transactionHashes).toEqual(['0xtxhash']);
-    expect(RelayService.prepareCalls).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      permissionId: '0xperm',
+    expect(RelayActions.sendCalls).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      calls: mockCalls,
     }));
   });
 
@@ -116,15 +112,15 @@ describe('PortoExecution Service', () => {
     expect(result.error).toContain('Session key expired');
   });
 
-  it('should return unauthorized error when prepareCalls fails with Unauthorized', async () => {
+  it('should return unauthorized error when sendCalls fails with Unauthorized', async () => {
     // Mock active permission
     (permissionStore.findActivePermissionForBackendKey as any).mockReturnValue({
       id: '0xperm',
       expiry: Date.now() / 1000 + 3600,
     });
 
-    // Mock prepareCalls failure
-    (RelayService.prepareCalls as any).mockRejectedValue(new Error('Reason: Unauthorized'));
+    // Mock sendCalls failure
+    vi.mocked(RelayActions.sendCalls).mockRejectedValue(new Error('Reason: Unauthorized'));
 
     const result = await executeWithBackendPermission({
       walletAddress: mockWalletAddress,
@@ -144,8 +140,8 @@ describe('PortoExecution Service', () => {
       expiry: Date.now() / 1000 + 3600,
     });
 
-    // Mock prepareCalls failure
-    (RelayService.prepareCalls as any).mockRejectedValue(new Error('Invalid precall'));
+    // Mock sendCalls failure
+    vi.mocked(RelayActions.sendCalls).mockRejectedValue(new Error('Invalid precall'));
 
     const result = await executeWithBackendPermission({
       walletAddress: mockWalletAddress,
@@ -165,8 +161,8 @@ describe('PortoExecution Service', () => {
       expiry: Date.now() / 1000 + 3600,
     });
 
-    // Mock prepareCalls failure
-    (RelayService.prepareCalls as any).mockRejectedValue(new Error('Network error: failed to fetch'));
+    // Mock sendCalls failure
+    vi.mocked(RelayActions.sendCalls).mockRejectedValue(new Error('Network error: failed to fetch'));
 
     const result = await executeWithBackendPermission({
       walletAddress: mockWalletAddress,

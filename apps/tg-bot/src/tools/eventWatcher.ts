@@ -32,10 +32,10 @@ export const createAlertTool = tool({
       direction: tool.schema.enum(["above", "below"]).optional().describe("Alert when value goes above/below threshold"),
     }).describe("Configuration for the alert"),
   },
-  async execute(args) {
-    const userId = "placeholder_user_id"; // Will be replaced with actual user ID from context
+  async execute(args, context) {
+    const userId = context.sessionID || "placeholder_user_id"; // Use session ID from context
     const alertId = `alert_${Date.now()}`;
-    
+
     const newAlert: EventFilter = {
       id: alertId,
       userId,
@@ -50,7 +50,7 @@ export const createAlertTool = tool({
     userAlerts.push(newAlert);
     eventFilters.set(userId, userAlerts);
 
-    return {
+    return JSON.stringify({
       success: true,
       alertId,
       message: `Alert created successfully. You will be notified when the ${args.type} event occurs.`,
@@ -60,20 +60,20 @@ export const createAlertTool = tool({
         config: args.config,
         active: true,
       },
-    };
+    });
   },
 });
 
 export const listAlertsTool = tool({
   description: "List all active alerts for the user",
   args: {},
-  async execute() {
-    const userId = "placeholder_user_id"; // Will be replaced with actual user ID from context
+  async execute(args, context) {
+    const userId = context.sessionID || "placeholder_user_id"; // Use session ID from context
     const userAlerts = eventFilters.get(userId) || [];
-    
+
     const activeAlerts = userAlerts.filter(alert => alert.active);
 
-    return {
+    return JSON.stringify({
       success: true,
       alerts: activeAlerts.map(alert => ({
         id: alert.id,
@@ -82,7 +82,7 @@ export const listAlertsTool = tool({
         createdAt: alert.createdAt.toISOString(),
       })),
       count: activeAlerts.length,
-    };
+    });
   },
 });
 
@@ -91,42 +91,42 @@ export const removeAlertTool = tool({
   args: {
     alertId: tool.schema.string().describe("ID of the alert to remove"),
   },
-  async execute(args) {
-    const userId = "placeholder_user_id"; // Will be replaced with actual user ID from context
+  async execute(args, context) {
+    const userId = context.sessionID || "placeholder_user_id"; // Use session ID from context
     const userAlerts = eventFilters.get(userId) || [];
-    
+
     const alertIndex = userAlerts.findIndex(alert => alert.id === args.alertId);
-    
+
     if (alertIndex === -1) {
-      return { error: "Alert not found" };
+      return JSON.stringify({ error: "Alert not found" });
     }
 
     userAlerts[alertIndex].active = false;
     eventFilters.set(userId, userAlerts);
 
-    return {
+    return JSON.stringify({
       success: true,
       message: "Alert removed successfully",
       alertId: args.alertId,
-    };
+    });
   },
 });
 
 export const checkEventsTool = tool({
   description: "Manually check for events that match active alerts (placeholder for automated checking)",
   args: {},
-  async execute() {
+  async execute(args, context) {
     // This is a placeholder for the actual event checking logic
     // In production, this would:
     // 1. Query blockchain/API for relevant events
     // 2. Check against user's alert criteria
     // 3. Send notifications via Telegram if conditions are met
-    
-    return {
+
+    return JSON.stringify({
       success: true,
       message: "Event checking is currently in development. Automated alerts will be available soon.",
       checkedAt: new Date().toISOString(),
-    };
+    });
   },
 });
 

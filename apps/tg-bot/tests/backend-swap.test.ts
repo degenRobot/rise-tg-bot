@@ -63,7 +63,7 @@ const UNISWAP_CONTRACTS = {
 };
 
 async function testBackendSwap() {
-  console.log("🔄 Testing Backend Swap (Replicating wallet-demo useSwap)");
+  console.log("Testing Backend Swap (Replicating wallet-demo useSwap)");
   console.log("========================================================\n");
 
   // Test with user who actually granted permissions

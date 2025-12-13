@@ -118,7 +118,7 @@ async function testRealPermissionExecution() {
 
   } catch (error) {
     console.error("❌ Test failed:", error);
-    console.error(error.stack);
+    console.error(error instanceof Error ? error.stack : undefined);
   }
 }
 

@@ -5,16 +5,16 @@ const require = createRequire(import.meta.url);
 console.log("🧪 Testing basic backend wallet functionality...");
 
 try {
-  console.log("1️⃣ Testing service imports...");
+  console.log(" Testing service imports...");
   
   // Test if we can import our services
-  const { backendTransactionService } = await import('./src/services/backendTransactionService.js');
+  const { backendTransactionService } = await import('../src/services/backendTransactionService.js');
   console.log("✅ Transaction service imported");
-  
-  const { backendSwapService } = await import('./src/services/backendSwapService.js');
+
+  const { backendSwapService } = await import('../src/services/backendSwapService.js');
   console.log("✅ Swap service imported");
   
-  console.log("2️⃣ Testing service initialization...");
+  console.log(" Testing service initialization...");
   
   // Test service info
   const transactionInfo = backendTransactionService.getInfo();
@@ -23,13 +23,13 @@ try {
   const swapInfo = backendSwapService.getInfo();
   console.log("✅ Swap service info:", swapInfo);
   
-  console.log("3️⃣ Testing token configuration...");
+  console.log(" Testing token configuration...");
   const tokens = backendSwapService.getTokens();
   console.log("✅ Available tokens:", Object.keys(tokens));
   
   console.log("✅ All basic tests passed!");
   
 } catch (error) {
-  console.error("❌ Test failed:", error.message);
-  console.error("Stack:", error.stack);
+  console.error("❌ Test failed:", error instanceof Error ? error.message : String(error));
+  console.error("Stack:", error instanceof Error ? error.stack : undefined);
 }

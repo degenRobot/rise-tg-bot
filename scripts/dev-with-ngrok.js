@@ -50,7 +50,7 @@ async function getNgrokUrl() {
 
 async function startNgrok() {
   return new Promise((resolve) => {
-    log('\n🔗 Starting ngrok tunnel...', colors.yellow);
+    log('\n Starting ngrok tunnel...', colors.yellow);
     
     const ngrok = spawn('ngrok', ['http', 'https://localhost:3000'], {
       detached: true,

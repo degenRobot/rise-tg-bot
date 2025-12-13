@@ -10,7 +10,7 @@ vi.mock('viem/actions', () => ({
 }));
 
 vi.mock('../config/backendRiseClient.js', () => ({
-  riseRelayClient: {
+  risePublicClient: {
     getBytecode: vi.fn(),
   },
 }));

@@ -17,19 +17,19 @@ function log(message, color = colors.reset) {
 }
 
 async function main() {
-  log('\n🚀 RISE TG Bot - Development Mode', colors.bright);
+  log('\nRISE TG Bot - Development Mode', colors.bright);
   log('─'.repeat(40), colors.reset);
   
-  log('\n📡 Starting services:', colors.bright);
+  log('\nStarting services:', colors.bright);
   log('   • Frontend (Next.js) on http://localhost:3000', colors.blue);
   log('   • Bot API (Express) on http://localhost:8008', colors.green);
   
-  log('\n⚙️  Configuration:', colors.bright);
+  log('\nConfiguration:', colors.bright);
   log('   • Frontend URL: http://localhost:3000', colors.reset);
   log('   • Bot endpoint: http://localhost:8008', colors.reset);
   log('   • Data storage: ./apps/tg-bot/data/', colors.reset);
   
-  log('\n💡 Tips:', colors.yellow);
+  log('\nTips:', colors.yellow);
   log('   • Logs are prefixed with [frontend] and [bot]', colors.reset);
   log('   • Press Ctrl+C to stop all services', colors.reset);
   log('   • Use "pnpm dev" for ngrok integration', colors.reset);
@@ -44,24 +44,24 @@ async function main() {
 
   // Handle graceful shutdown
   process.on('SIGINT', () => {
-    log('\n\n🛑 Shutting down...', colors.yellow);
+    log('\n\nShutting down...', colors.yellow);
     devProcess.kill('SIGTERM');
     setTimeout(() => {
-      log('✅ All services stopped', colors.green);
-      log('👋 Goodbye!', colors.green);
+      log('All services stopped', colors.green);
+      log('Goodbye!', colors.green);
       process.exit(0);
     }, 1000);
   });
 
   devProcess.on('exit', (code) => {
     if (code !== null && code !== 0) {
-      log(`\n❌ Process exited with code ${code}`, colors.red);
+      log(`\n Process exited with code ${code}`, colors.red);
     }
     process.exit(code);
   });
 }
 
 main().catch((error) => {
-  log(`\n❌ Error: ${error.message}`, colors.red);
+  log(`\n Error: ${error.message}`, colors.red);
   process.exit(1);
 });

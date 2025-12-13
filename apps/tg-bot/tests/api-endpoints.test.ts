@@ -5,20 +5,20 @@ const API_URL = process.env.API_URL || "http://localhost:8008";
 const TEST_PRIVATE_KEY = "0x376e27e68a7412d0fb6b0c9acef39f6b49500e1e27667c315bb9b0aa00f109f9";
 
 async function testAPIEndpoints() {
-  console.log("🔍 Testing API Endpoints");
+  console.log(" Testing API Endpoints");
   console.log("========================\n");
 
   const account = privateKeyToAccount(TEST_PRIVATE_KEY);
   const telegramId = "987654321";
   const telegramHandle = "apiTestUser";
 
-  console.log("📍 API URL:", API_URL);
-  console.log("💳 Test Wallet:", account.address);
-  console.log("📱 Telegram ID:", telegramId);
-  console.log("👤 Telegram Handle:", telegramHandle);
+  console.log("API URL:", API_URL);
+  console.log("Test Wallet:", account.address);
+  console.log("Telegram ID:", telegramId);
+  console.log("Telegram Handle:", telegramHandle);
 
   // Test 1: Health Check
-  console.log("\n1️⃣ Testing Health Check...");
+  console.log("\n Testing Health Check...");
   try {
     const healthResponse = await fetch(`${API_URL}/api/health`);
     const healthData = await healthResponse.json();
@@ -28,7 +28,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 2: Check Status (Before Linking)
-  console.log("\n2️⃣ Checking Status (Before Linking)...");
+  console.log("\n Checking Status (Before Linking)...");
   try {
     const statusResponse = await fetch(`${API_URL}/api/verify/status/${telegramId}`);
     const statusData = await statusResponse.json();
@@ -39,7 +39,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 3: Get Verification Message
-  console.log("\n3️⃣ Getting Verification Message...");
+  console.log("\n Getting Verification Message...");
   let message = "";
   try {
     const messageResponse = await fetch(`${API_URL}/api/verify/message`, {
@@ -55,7 +55,7 @@ async function testAPIEndpoints() {
     const messageData = await messageResponse.json();
     message = messageData.message;
     console.log("✅ Got verification message");
-    console.log("\n📝 Message:");
+    console.log("\nMessage:");
     console.log("-------------------");
     console.log(message);
     console.log("-------------------");
@@ -65,12 +65,12 @@ async function testAPIEndpoints() {
   }
 
   // Test 4: Sign Message
-  console.log("\n4️⃣ Signing Message...");
+  console.log("\nSigning Message...");
   const signature = await account.signMessage({ message });
   console.log("✅ Signature:", signature);
 
   // Test 5: Submit Signature
-  console.log("\n5️⃣ Submitting Signature for Verification...");
+  console.log("\n Submitting Signature for Verification...");
   try {
     const verifyResponse = await fetch(`${API_URL}/api/verify/signature`, {
       method: "POST",
@@ -95,7 +95,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 6: Check Status (After Linking)
-  console.log("\n6️⃣ Checking Status (After Linking)...");
+  console.log("\nChecking Status (After Linking)...");
   try {
     const statusResponse = await fetch(`${API_URL}/api/verify/status/${telegramId}`);
     const statusData = await statusResponse.json();
@@ -110,7 +110,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 7: Check User by Telegram ID
-  console.log("\n7️⃣ Checking User by Telegram ID...");
+  console.log("\n Checking User by Telegram ID...");
   try {
     const userResponse = await fetch(`${API_URL}/api/users/by-telegram/${telegramId}`);
     if (userResponse.ok) {
@@ -125,7 +125,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 8: Sync Permissions (Frontend Flow)
-  console.log("\n8️⃣ Testing Permission Sync...");
+  console.log("\n Testing Permission Sync...");
   try {
     const syncResponse = await fetch(`${API_URL}/api/permissions/sync`, {
       method: "POST",
@@ -146,7 +146,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 9: Revoke Verification
-  console.log("\n9️⃣ Testing Revoke Verification...");
+  console.log("\n Testing Revoke Verification...");
   try {
     const revokeResponse = await fetch(`${API_URL}/api/verify/revoke`, {
       method: "POST",
@@ -161,7 +161,7 @@ async function testAPIEndpoints() {
   }
 
   // Test 10: Final Status Check
-  console.log("\n🔟 Final Status Check...");
+  console.log("\n Final Status Check...");
   try {
     const statusResponse = await fetch(`${API_URL}/api/verify/status/${telegramId}`);
     const statusData = await statusResponse.json();
