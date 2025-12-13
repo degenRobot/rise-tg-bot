@@ -1,0 +1,14 @@
+{
+  "name": "@rise-bot/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./contracts/index.ts",
+  "exports": {
+    "./contracts": "./contracts/index.ts",
+    "./contracts/registry": "./contracts/registry.ts",
+    "./contracts/permissionBuilder": "./contracts/permissionBuilder.ts"
+  },
+  "dependencies": {
+    "viem": "^2.21.51"
+  }
+}

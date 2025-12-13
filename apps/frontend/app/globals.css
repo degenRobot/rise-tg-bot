@@ -1,73 +1,116 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  /* Modern, clean palette */
-  --background: #f8f9fa;
-  --foreground: #111827;
-  
-  --card-bg: #ffffff;
-  --card-border: #e5e7eb;
-  
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-foreground: #ffffff;
-  
-  --secondary: #f3f4f6;
-  --secondary-hover: #e5e7eb;
-  --secondary-foreground: #1f2937;
-  
-  --muted: #6b7280;
-  --muted-foreground: #9ca3af;
-  
-  --success: #10b981;
-  --error: #ef4444;
-  
-  --radius: 0.75rem;
-}
+@import "../styles/base/index.css";
+@import "../styles/keyframes.css";
+
+@plugin "@tailwindcss/container-queries";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card-bg);
-  --color-primary: var(--primary);
+  --animate-fade-in: fade-in 400ms ease-out;
+  --animate-fade-out: fade-out 400ms ease-out;
+  --animate-slide-in: slide-in 200ms ease-out;
+  --animate-slide-out: slide-out 200ms ease-out;
+  --animate-slide-up: slide-up 200ms ease-out;
+  --animate-slide-down: slide-down 200ms ease-out;
+  --animate-accordion-down: accordion-down 200ms ease-out;
+  --animate-accordion-up: accordion-up 200ms ease-out;
+  --animate-collapsible-down: collapsible-down 200ms ease-out;
+  --animate-collapsible-up: collapsible-up 200ms ease-out;
+
+  --color-accent: var(--gray-3);
+  --color-accent-foreground: var(--gray-12);
+
+  --color-background: var(--gray-1);
+  --color-foreground: var(--gray-12);
+
+  --color-invert: var(--gray-contrast);
+
+  --color-primary: var(--purple-9);
+  --color-primary-foreground: var(--purple-contrast);
+
+  --color-secondary: var(--gray-4);
+  --color-secondary-foreground: var(--gray-12);
+
+  --color-border: var(--gray-6);
+  --color-input: var(--gray-6);
+
+  --color-card: var(--gray-1);
+  --color-card-foreground: var(--gray-surface);
+
+  --color-destructive: #d4183d;
+  --color-destructive-foreground: var(--gray-1);
+
+  --color-warning: #ffaa00;
+  --color-warning-foreground: var(--gray-1);
+
+  --color-success: #009933;
+  --color-success-foreground: var(--gray-1);
+
+  --color-muted: var(--gray-6);
+  --color-muted-foreground: var(--gray-9);
+
+  --color-popover: var(--gray-1);
+  --color-popover-foreground: var(--gray-surface);
+
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--gray-1);
+  --color-sidebar-accent: var(--purple-9);
+  --color-sidebar-accent-foreground: var(--gray-1);
+  --color-sidebar-border: var(--gray-6);
+  --color-sidebar-foreground: var(--gray-12);
+  --color-sidebar-primary: var(--purple-9);
+  --color-sidebar-primary-foreground: var(--gray-1);
+  --color-sidebar-ring: var(--ring);
+
   --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-xs: calc(var(--radius) - 6px);
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-    
-    --card-bg: #1e293b;
-    --card-border: #334155;
-    
-    --primary: #3b82f6;
-    --primary-hover: #2563eb;
-    
-    --secondary: #334155;
-    --secondary-hover: #475569;
-    --secondary-foreground: #f8fafc;
-    
-    --muted: #94a3b8;
+    --radius: 0.5rem;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  * {
+    @apply border-border outline-ring/50;
+  }
 
-/* Utilities */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+  html {
+    scroll-behavior: smooth;
+  }
 
-.dark .glass-panel {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  body {
+    @apply bg-background text-foreground;
+    overflow-y: scroll;
+  }
+
+  p,
+  * {
+    color: var(--color-foreground);
+  }
+
+  /* Global Scrollbar Styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-accent);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: 32px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-foreground);
+  }
 }

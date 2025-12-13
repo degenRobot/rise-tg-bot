@@ -1,0 +1,16 @@
+/* Note: CSS Tokens here are based on Design Guide */
+/* Avoid hard coding colors so it's easier to change themes (light|dark), and palette */
+
+/* Light mode */
+/* Accent */
+@import "./light/purple.css";
+
+/* Background and Foreground */
+@import "./light/gray.css";
+
+/* Dark mode */
+/* Accent */
+@import "./dark/purple.css";
+
+/* Background and Foreground */
+@import "./dark/gray.css";

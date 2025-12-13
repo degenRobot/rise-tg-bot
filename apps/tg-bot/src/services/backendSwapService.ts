@@ -1,4 +1,4 @@
-import { Address, encodeFunctionData, parseUnits, getContract } from "viem";
+import { Address, encodeFunctionData, parseUnits, getContract, formatUnits } from "viem";
 import { backendTransactionService } from "./backendTransactionService.js";
 import { MintableERC20ABI } from "../abi/erc20.js";
 import { UniswapV2RouterABI } from "../abi/swap.js";
@@ -56,7 +56,7 @@ class BackendSwapService {
           amountIn: amount + " " + fromToken,
           amountInWei: amountIn.toString(),
           expectedOut: expectedOut.toString(),
-          expectedOutFormatted: (Number(expectedOut) / 1e18).toFixed(4) + " " + toToken,
+          expectedOutFormatted: formatUnits(expectedOut, toTokenInfo.decimals) + " " + toToken,
           hasLiquidity: expectedOut > 0n
         });
 

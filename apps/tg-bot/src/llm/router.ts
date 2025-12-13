@@ -90,12 +90,16 @@ export function createLlmRouter() {
           return "Sorry, I couldn't understand your request. Please try again.";
         }
 
-        console.log("LLM Raw Response:", content);
+        if (process.env.DEBUG) {
+          console.log("LLM Raw Response:", content);
+        }
         
         let parsedJson;
         try {
           parsedJson = JSON.parse(content);
-          console.log("Parsed JSON:", parsedJson);
+          if (process.env.DEBUG) {
+            console.log("Parsed JSON:", parsedJson);
+          }
         } catch (parseError) {
           console.error("❌ Failed to parse JSON:", parseError);
           return "Sorry, I received an invalid response format. Please try again.";
@@ -221,8 +225,10 @@ export function createLlmRouter() {
             }, userAddress as Address);
 
             if (result.success) {
-               const txHash = result.data?.hash || "unknown";
-               return `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
+               const txHash = result.data?.hash;
+               return txHash
+                 ? `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`
+                 : `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!`;
             } else {
                return getErrorResponse(result.errorType, result.error);
             }
@@ -272,8 +278,10 @@ export function createLlmRouter() {
             }, userAddress as Address);
 
             if (result.success) {
-               const txHash = result.data?.hash || "unknown";
-               return `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
+               const txHash = result.data?.hash;
+               return txHash
+                 ? `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`
+                 : `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!`;
             } else {
                return getErrorResponse(result.errorType, result.error);
             }
@@ -301,8 +309,12 @@ export function createLlmRouter() {
             }
 
             const totalTxs = swapResult.data?.totalTransactions || 1;
-            const txHash = swapResult.data?.hash || "unknown";
-            return `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key\nFinal hash: ${txHash?.slice(0, 10)}...\nCheck it on the explorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
+            const txHash = swapResult.data?.hash;
+            const baseMessage = `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key`;
+            
+            return txHash
+              ? `${baseMessage}\nFinal hash: ${txHash.slice(0, 10)}...\nCheck it on the explorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`
+              : baseMessage;
 
           } catch (error) {
             console.error("Swap execution error:", error);

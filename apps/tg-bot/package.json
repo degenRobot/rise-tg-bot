@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.0.68",
+    "@rise-bot/shared": "file:../shared",
     "@tanstack/react-query": "^5.90.10",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
