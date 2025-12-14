@@ -1,6 +1,6 @@
 import type { Address } from "viem";
 import type { ExecutionErrorType } from "./transactions.js";
-import { CONTRACT_REGISTRY } from "@rise-bot/shared/contracts";
+import { CONTRACT_REGISTRY } from "@rise-bot/shared";
 
 /**
  * Swap Types

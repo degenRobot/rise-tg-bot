@@ -1,14 +1,26 @@
 {
   "name": "@rise-bot/shared",
   "version": "1.0.0",
-  "type": "module",
-  "main": "./contracts/index.ts",
+  "main": "./dist/contracts/index.js",
+  "types": "./dist/contracts/index.d.ts",
   "exports": {
-    "./contracts": "./contracts/index.ts",
-    "./contracts/registry": "./contracts/registry.ts",
-    "./contracts/permissionBuilder": "./contracts/permissionBuilder.ts"
+    ".": {
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts", 
+      "default": "./dist/contracts/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
   },
   "dependencies": {
     "viem": "^2.21.51"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

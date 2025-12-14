@@ -1,5 +1,5 @@
 import { Address, keccak256, toHex, parseEther } from "viem";
-import { CONTRACT_REGISTRY, TokenInfo } from "./registry.js";
+import { CONTRACT_REGISTRY, TokenInfo } from "./registry";
 
 export type CallPermission = {
   to: Address;
@@ -82,7 +82,7 @@ export class PermissionBuilder {
   
   // Add permission for a protocol function
   addProtocolFunction(protocolName: string, contractName: string, functionName: string, customLabel?: string): this {
-    const protocol = CONTRACT_REGISTRY.protocols[protocolName];
+    const protocol = CONTRACT_REGISTRY.protocols[protocolName as keyof typeof CONTRACT_REGISTRY.protocols] as any;
     if (!protocol) {
       throw new Error(`Protocol ${protocolName} not found in registry`);
     }
@@ -90,6 +90,10 @@ export class PermissionBuilder {
     const contract = protocol[contractName];
     if (!contract) {
       throw new Error(`Contract ${contractName} not found in protocol ${protocolName}`);
+    }
+    
+    if (!('functions' in contract)) {
+      throw new Error(`Contract ${contractName} has no functions`);
     }
     
     const func = contract.functions[functionName];

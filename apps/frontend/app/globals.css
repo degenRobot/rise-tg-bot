@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-
 @import "../styles/base/index.css";
 @import "../styles/keyframes.css";
 
@@ -55,7 +53,7 @@
   --color-popover: var(--gray-1);
   --color-popover-foreground: var(--gray-surface);
 
-  --color-ring: var(--ring);
+  --color-ring: var(--purple-9);
 
   --color-sidebar: var(--gray-1);
   --color-sidebar-accent: var(--purple-9);
@@ -64,7 +62,7 @@
   --color-sidebar-foreground: var(--gray-12);
   --color-sidebar-primary: var(--purple-9);
   --color-sidebar-primary-foreground: var(--gray-1);
-  --color-sidebar-ring: var(--ring);
+  --color-sidebar-ring: var(--purple-9);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);

@@ -133,7 +133,12 @@ export const CONTRACT_REGISTRY = {
   
   // Get function signature for a specific contract function
   getFunctionSignature(protocolName: string, contractName: string, functionName: string): string | undefined {
-    return this.protocols[protocolName]?.[contractName]?.functions[functionName]?.signature;
+    const protocol = this.protocols[protocolName as keyof typeof this.protocols] as any;
+    if (!protocol) return undefined;
+    const contract = protocol[contractName];
+    if (!contract || !('functions' in contract)) return undefined;
+    const func = contract.functions[functionName];
+    return func?.signature;
   },
   
   // Helper to generate common ERC20 function signatures
