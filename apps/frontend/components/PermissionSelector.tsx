@@ -28,7 +28,7 @@ export function PermissionSelector({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-[var(--foreground)]">Function Permissions</h3>
-            <p className="text-sm text-[var(--muted)]">Select which actions the bot can perform</p>
+            <p className="text-sm text-muted-foreground">Select which actions the bot can perform</p>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => onToggleAll("calls", true)}>
@@ -50,15 +50,15 @@ export function PermissionSelector({
                 className={`
                   group flex items-center p-4 rounded-xl border cursor-pointer transition-all duration-200
                   ${isSelected 
-                    ? "bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm" 
-                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"}
+                    ? "bg-purple-50/50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800 shadow-sm" 
+                    : "bg-background border-border hover:border-purple-300 dark:hover:border-purple-700"}
                 `}
               >
                 <div className={`
                   flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-3 transition-colors
                   ${isSelected
-                    ? "bg-blue-600 border-blue-600"
-                    : "border-gray-300 dark:border-gray-600 group-hover:border-blue-400"}
+                    ? "bg-purple-600 border-purple-600"
+                    : "border-gray-300 dark:border-gray-600 group-hover:border-purple-400"}
                 `}>
                   {isSelected && (
                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -66,7 +66,7 @@ export function PermissionSelector({
                     </svg>
                   )}
                 </div>
-                <span className={`font-medium ${isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-700 dark:text-gray-300"}`}>
+                <span className={`font-medium ${isSelected ? "text-purple-900 dark:text-purple-100" : "text-foreground"}`}>
                   {item.label}
                 </span>
               </div>
@@ -80,7 +80,7 @@ export function PermissionSelector({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-[var(--foreground)]">Spending Limits</h3>
-            <p className="text-sm text-[var(--muted)]">Define token allowance limits</p>
+            <p className="text-sm text-muted-foreground">Define token allowance limits</p>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => onToggleAll("spend", true)}>
@@ -102,15 +102,15 @@ export function PermissionSelector({
                 className={`
                   group flex items-center p-4 rounded-xl border cursor-pointer transition-all duration-200
                   ${isSelected 
-                    ? "bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm" 
-                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"}
+                    ? "bg-purple-50/50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800 shadow-sm" 
+                    : "bg-background border-border hover:border-purple-300 dark:hover:border-purple-700"}
                 `}
               >
                 <div className={`
                   flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-3 transition-colors
                   ${isSelected
-                    ? "bg-blue-600 border-blue-600"
-                    : "border-gray-300 dark:border-gray-600 group-hover:border-blue-400"}
+                    ? "bg-purple-600 border-purple-600"
+                    : "border-gray-300 dark:border-gray-600 group-hover:border-purple-400"}
                 `}>
                   {isSelected && (
                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +118,7 @@ export function PermissionSelector({
                     </svg>
                   )}
                 </div>
-                <span className={`font-medium ${isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-700 dark:text-gray-300"}`}>
+                <span className={`font-medium ${isSelected ? "text-purple-900 dark:text-purple-100" : "text-foreground"}`}>
                   {item.label}
                 </span>
               </div>
@@ -128,10 +128,10 @@ export function PermissionSelector({
       </div>
 
       {/* Expiry Section */}
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="pt-4 border-t border-border">
         <div className="flex items-center gap-4">
-          <h3 className="font-medium text-[var(--foreground)]">Session Expiry</h3>
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500">
+          <h3 className="font-medium text-foreground">Session Expiry</h3>
+          <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-purple-500">
             <input
               type="number"
               value={expiryDays}
@@ -140,7 +140,7 @@ export function PermissionSelector({
               max={365}
               className="w-12 bg-transparent border-none outline-none text-center font-medium"
             />
-            <span className="text-sm text-gray-500">days</span>
+            <span className="text-sm text-muted-foreground">days</span>
           </div>
         </div>
       </div>

@@ -170,24 +170,21 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-background">
+    <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-background">
       <div className="max-w-3xl mx-auto space-y-8">
         
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-2xl mb-2">
-            <span className="text-3xl">🤖</span>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             RISE Telegram Bot
           </h1>
-          <p className="text-lg text-(--muted) max-w-2xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Connect your wallet and link your Telegram account to start using the bot for transactions.
           </p>
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center w-full max-w-md mx-auto mb-12">
+        <div className="flex items-center justify-center w-full max-w-sm mx-auto mb-8">
           {[1, 2, 3].map((step) => {
             const isActive = currentStep >= step;
             const isCompleted = currentStep > step;
@@ -195,13 +192,13 @@ export default function Home() {
             return (
               <div key={step} className="flex items-center w-full last:w-auto">
                 <div className={`
-                  flex items-center justify-center w-10 h-10 rounded-full font-bold transition-all duration-300
-                  ${isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "bg-gray-200 dark:bg-gray-700 text-gray-500"}
+                  flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm transition-all duration-300
+                  ${isActive ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}
                 `}>
                   {isCompleted ? "✓" : step}
                 </div>
                 {step < 3 && (
-                  <div className={`flex-1 h-1 mx-2 rounded-full transition-colors duration-300 ${isActive && currentStep > step ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"}`} />
+                  <div className={`flex-1 h-0.5 mx-2 rounded-full transition-colors duration-300 ${isActive && currentStep > step ? "bg-purple-600" : "bg-gray-200 dark:bg-gray-800"}`} />
                 )}
               </div>
             );
@@ -209,17 +206,14 @@ export default function Home() {
         </div>
         
         {/* Step 1: Wallet Connection */}
-        <Card className={`transition-all duration-300 ${currentStep === 1 ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900" : "opacity-80 hover:opacity-100"}`}>
+        <Card className={`transition-all duration-300 ${currentStep === 1 ? "border-purple-500/50" : ""}`}>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-bold">1</div>
-              <h2 className="text-xl font-semibold">Connect Wallet</h2>
-            </div>
+            <h2 className="text-lg font-semibold">Connect Wallet</h2>
           </CardHeader>
           <CardContent>
             {!isConnected ? (
-              <div className="space-y-6 text-center py-4">
-                <p className="text-(--muted)">
+              <div className="space-y-6 text-center py-2">
+                <p className="text-sm text-muted-foreground">
                   Connect your RISE Smart Wallet to get started.
                 </p>
                 {connectors.length === 0 ? (
@@ -247,12 +241,12 @@ export default function Home() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/10 p-4 rounded-lg border border-green-100 dark:border-green-900/30">
+              <div className="flex items-center justify-between bg-purple-50 dark:bg-purple-900/10 p-4 rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   <div>
-                    <p className="font-medium text-green-900 dark:text-green-100">Connected</p>
-                    <p className="text-sm text-green-700 dark:text-green-300 font-mono">
+                    <p className="font-medium text-foreground">Connected</p>
+                    <p className="text-sm text-muted-foreground font-mono">
                       {address?.slice(0, 6)}...{address?.slice(-4)}
                     </p>
                   </div>
@@ -301,20 +295,15 @@ export default function Home() {
 
         {/* Step 2: Permission Configuration */}
         {isConnected && (
-          <Card className={`transition-all duration-300 ${currentStep === 2 ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900 shadow-lg" : ""}`}>
+          <Card className={`transition-all duration-300 ${currentStep === 2 ? "border-purple-500/50" : ""}`}>
             <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${hasGrantedPermissions ? "bg-green-100 text-green-600" : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"}`}>
-                  {hasGrantedPermissions ? "✓" : "2"}
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold">Grant Permissions</h2>
-                  {!hasGrantedPermissions && (
-                    <p className="text-sm text-(--muted) font-normal mt-0.5">
-                      Authorize the bot to act on your behalf
-                    </p>
-                  )}
-                </div>
+              <div>
+                <h2 className="text-lg font-semibold">Grant Permissions</h2>
+                {!hasGrantedPermissions && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Authorize the bot to act on your behalf
+                  </p>
+                )}
               </div>
             </CardHeader>
             
@@ -335,24 +324,24 @@ export default function Home() {
                     <Button
                       onClick={handleGrantPermissions}
                       disabled={isGranting || (selectedCalls.length === 0 && selectedSpend.length === 0)}
-                      className="w-full py-4 text-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all"
-                      size="lg"
+                      className="w-full"
+                      size="default"
                       isLoading={isGranting}
                     >
                       {isGranting ? "Granting Permissions..." : "Grant Permissions"}
                     </Button>
                     {error && !success && (
-                      <p className="text-red-500 text-sm mt-3 text-center bg-red-50 dark:bg-red-900/10 p-2 rounded-lg border border-red-100">
+                      <p className="text-red-500 text-sm mt-3 text-center">
                         {error}
                       </p>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/20">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 dark:text-green-400 text-xl">✓</div>
-                  <p className="text-green-700 dark:text-green-300 font-medium">Permissions Granted</p>
-                  <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">
+                <div className="text-center py-6 bg-purple-50/30 dark:bg-purple-900/10 rounded-lg">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-purple-600 dark:text-purple-400">✓</div>
+                  <p className="text-foreground font-medium">Permissions Granted</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Bot has permission to perform selected actions
                   </p>
                 </div>
@@ -363,16 +352,16 @@ export default function Home() {
 
         {/* Step 3: Telegram Connection */}
         {isConnected && hasGrantedPermissions && (
-          <Card className={`transition-all duration-300 ${currentStep === 3 ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900 shadow-lg" : ""}`}>
+          <Card className={`transition-all duration-300 ${currentStep === 3 ? "border-purple-500/50" : ""}`}>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${telegramUser ? "bg-green-100 text-green-600" : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400"}`}>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm ${telegramUser ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
                   {telegramUser ? "✓" : "3"}
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Link Telegram</h2>
+                  <h2 className="text-lg font-semibold">Link Telegram</h2>
                   {!telegramUser && (
-                    <p className="text-sm text-(--muted) font-normal mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-1">
                       Verify ownership of your Telegram account
                     </p>
                   )}
@@ -383,10 +372,10 @@ export default function Home() {
               {!telegramUser ? (
                 <TelegramVerification onVerified={handleTelegramVerified} />
               ) : (
-                <div className="text-center py-6 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/20 w-full">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 dark:text-green-400 text-xl">✓</div>
-                  <p className="text-green-700 dark:text-green-300 font-medium">Telegram Connected</p>
-                  <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">
+                <div className="text-center py-6 bg-purple-50/30 dark:bg-purple-900/10 rounded-lg w-full">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-purple-600 dark:text-purple-400">✓</div>
+                  <p className="text-foreground font-medium">Telegram Connected</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     {telegramUser.first_name} {telegramUser.last_name}
                     {telegramUser.username && ` (@${telegramUser.username})`}
                   </p>
@@ -398,19 +387,18 @@ export default function Home() {
 
         {/* Step 4: Success */}
         {success && telegramUser && (
-          <div className="animate-in zoom-in-95 duration-500 bg-linear-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-8 rounded-2xl text-center border border-green-100 dark:border-green-800/30 shadow-lg">
-            <div className="text-5xl mb-4">🎉</div>
-            <h3 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-3">
+          <div className="animate-in zoom-in-95 duration-500 bg-purple-50/30 dark:bg-purple-900/10 p-8 rounded-2xl text-center">
+            <h3 className="text-xl font-bold text-foreground mb-3">
               You&apos;re All Set!
             </h3>
-            <p className="text-green-700 dark:text-green-300 mb-6 max-w-md mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Your wallet is now linked to your Telegram account. You can close this window and start using the bot.
             </p>
             <a 
               href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors shadow-md shadow-green-600/20"
+              className="inline-flex items-center justify-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
             >
               Open Telegram Bot
               <svg className="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
