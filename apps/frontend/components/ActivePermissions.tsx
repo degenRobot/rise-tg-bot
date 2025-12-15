@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Card, CardHeader, CardContent } from "./Card";
+import { Card, CardContent } from "./Card";
 import { Button } from "./Button";
 
 interface Permission {
@@ -24,7 +24,7 @@ interface ActivePermissionsProps {
   backendKeyAddress: string;
 }
 
-export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: ActivePermissionsProps) {
+export function ActivePermissions({ permissions, onRevoke }: ActivePermissionsProps) {
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
   // Show ALL permissions for cleanup (temporarily disabled filtering)
@@ -126,7 +126,7 @@ export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: 
                 
                 <Button
                   size="sm"
-                  variant="danger"
+                  variant="destructive"
                   onClick={() => handleRevoke(permission.id)}
                   disabled={revokingId === permission.id || isExpired}
                 >

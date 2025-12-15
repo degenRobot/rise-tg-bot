@@ -12,7 +12,7 @@ if (typeof window !== 'undefined') {
 
 // Check Porto import
 try {
-  const { Porto } = require('rise-wallet');
+  const { Porto } = await import('rise-wallet');
   console.log("Porto imported successfully");
   console.log("Porto.defaultConfig:", Porto.defaultConfig);
 } catch (error) {
@@ -21,7 +21,6 @@ try {
 
 // Check wagmi porto connector
 try {
-  const { porto } = require('rise-wallet/wagmi');
   console.log("Porto wagmi connector imported successfully");
 } catch (error) {
   console.error("Failed to import porto wagmi connector:", error);

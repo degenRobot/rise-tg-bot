@@ -1,6 +1,5 @@
 import { PERMISSION_ITEMS } from "../config/permissions";
 import { Button } from "./Button";
-import { Card } from "./Card";
 
 interface PermissionSelectorProps {
   selectedCalls: string[];
@@ -27,7 +26,7 @@ export function PermissionSelector({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">Function Permissions</h3>
+            <h3 className="text-lg font-semibold text-(--foreground)">Function Permissions</h3>
             <p className="text-sm text-muted-foreground">Select which actions the bot can perform</p>
           </div>
           <div className="flex gap-2">
@@ -55,7 +54,7 @@ export function PermissionSelector({
                 `}
               >
                 <div className={`
-                  flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-3 transition-colors
+                  shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-3 transition-colors
                   ${isSelected
                     ? "bg-purple-600 border-purple-600"
                     : "border-gray-300 dark:border-gray-600 group-hover:border-purple-400"}
@@ -79,7 +78,7 @@ export function PermissionSelector({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">Spending Limits</h3>
+            <h3 className="text-lg font-semibold text-(--foreground)">Spending Limits</h3>
             <p className="text-sm text-muted-foreground">Define token allowance limits</p>
           </div>
           <div className="flex gap-2">
@@ -107,7 +106,7 @@ export function PermissionSelector({
                 `}
               >
                 <div className={`
-                  flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-3 transition-colors
+                  shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-3 transition-colors
                   ${isSelected
                     ? "bg-purple-600 border-purple-600"
                     : "border-gray-300 dark:border-gray-600 group-hover:border-purple-400"}

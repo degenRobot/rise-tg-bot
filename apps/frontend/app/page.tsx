@@ -250,11 +250,11 @@ export default function Home() {
                       } else {
                         console.error("No connectors available. Make sure RISE Wallet extension is installed.");
                         // Check if window.ethereum exists
-                        console.log("window.ethereum:", typeof window !== 'undefined' && (window as any).ethereum ? "exists" : "not found");
+                        console.log("window.ethereum:", typeof window !== 'undefined' && (window as { ethereum?: unknown }).ethereum ? "exists" : "not found");
                       }
                     }}
                     size="lg"
-                    className="w-full sm:w-auto min-w-[200px]"
+                    className="w-full sm:w-auto min-w-50"
                   >
                     Connect RISE Wallet
                   </Button>

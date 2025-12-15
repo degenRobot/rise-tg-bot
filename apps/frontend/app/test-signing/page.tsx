@@ -7,13 +7,30 @@ import { Card, CardHeader, CardContent } from "../../components/Card";
 import { toHex, recoverMessageAddress } from "viem";
 import { portoConnector } from "../../config/wagmi";
 
+type TestResult = {
+  name: string;
+  message: string;
+  signature?: string;
+  length?: number;
+  isValid?: boolean;
+  testMode?: string;
+  error?: string;
+  errorDetails?: {
+    code?: unknown;
+    data?: unknown;
+    stack?: string;
+  };
+};
+
 export default function TestSigning() {
   const { address, isConnected, connector } = useAccount();
-  const { signMessageAsync, isLoading, data: signData, variables } = useSignMessage();
-  const [result, setResult] = useState<any>(null);
+  const { signMessageAsync, isPending } = useSignMessage();
+  const [result, setResult] = useState<TestResult | null>(null);
   const [error, setError] = useState<string>("");
   const [testMode, setTestMode] = useState<'string' | 'hex'>('string');
 
+  // eslint-disable-next-line react-hooks/purity
+  const timestamp = Date.now();
   const testMessages = [
     { name: "Simple", message: "Hello World" },
     { name: "Numbers only", message: "123456789" },
@@ -25,7 +42,7 @@ export default function TestSigning() {
 
 I am linking my wallet to Telegram account @testuser (ID: 123456789)
 
-Timestamp: ${Date.now()}
+Timestamp: ${timestamp}
 Nonce: testNonce123
 
 This signature proves I control this wallet and authorize the RISE bot to execute transactions on my behalf.` },
@@ -46,16 +63,16 @@ This signature proves I control this wallet and authorize the RISE bot to execut
       // Log wallet state
       if (connector?.name === "Porto") {
         console.log("Porto connector state:", {
-          hasProvider: !!portoConnector._provider,
-          isConnected: await portoConnector.isAuthorized()
+          hasProvider: !!(portoConnector as { _provider?: unknown })._provider,
+          connectorName: connector.name
         });
       }
       
       const messageToSign = testMode === 'hex' ? toHex(message) : message;
       console.log("Message to sign:", testMode === 'hex' ? `0x${messageToSign.slice(2, 10)}...` : messageToSign);
       
-      const signature = await signMessageAsync({ 
-        message: messageToSign as any
+      const signature = await signMessageAsync({
+        message: messageToSign
       });
       
       console.log("=== Signature Analysis ===");
@@ -91,21 +108,26 @@ This signature proves I control this wallet and authorize the RISE bot to execut
         isValid: signature?.length === 132 && signature.startsWith("0x") && !/^0x0+$/.test(signature),
         testMode
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Full error object:", err);
-      console.error("Error stack:", err?.stack);
-      console.error("Error code:", err?.code);
-      console.error("Error data:", err?.data);
-      
-      setError(err?.message || "Unknown error");
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      const errorCode = (err as { code?: unknown }).code;
+      const errorData = (err as { data?: unknown }).data;
+
+      console.error("Error stack:", errorStack);
+      console.error("Error code:", errorCode);
+      console.error("Error data:", errorData);
+
+      setError(errorMessage);
       setResult({
         name,
         message,
-        error: err?.message || "Unknown error",
+        error: errorMessage,
         errorDetails: {
-          code: err?.code,
-          data: err?.data,
-          stack: err?.stack
+          code: errorCode,
+          data: errorData,
+          stack: errorStack
         }
       });
     }
@@ -156,7 +178,7 @@ This signature proves I control this wallet and authorize the RISE bot to execut
                 <div key={index}>
                   <Button
                     onClick={() => testSign(test.message, test.name)}
-                    disabled={isLoading}
+                    disabled={isPending}
                     className="w-full"
                   >
                     Test: {test.name}

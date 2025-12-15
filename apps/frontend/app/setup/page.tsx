@@ -10,7 +10,6 @@ type SetupStep = "connect" | "verify" | "permissions" | "complete";
 
 export default function SetupPage() {
   const { address, isConnected } = useAccount();
-  const [currentStep, setCurrentStep] = useState<SetupStep>("connect");
   const [backendKeyAddress, setBackendKeyAddress] = useState<string>("");
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [permissionsComplete, setPermissionsComplete] = useState(false);
@@ -18,6 +17,15 @@ export default function SetupPage() {
     handle: string;
     id?: string;
   } | null>(null);
+
+  // Derive current step from state instead of storing it
+  const currentStep: SetupStep = !isConnected
+    ? "connect"
+    : !verificationComplete
+    ? "verify"
+    : !permissionsComplete
+    ? "permissions"
+    : "complete";
 
   // Fetch backend configuration
   useEffect(() => {
@@ -36,19 +44,6 @@ export default function SetupPage() {
     fetchConfig();
   }, []);
 
-  // Update step based on wallet connection
-  useEffect(() => {
-    if (!isConnected) {
-      setCurrentStep("connect");
-    } else if (!verificationComplete) {
-      setCurrentStep("verify");
-    } else if (!permissionsComplete) {
-      setCurrentStep("permissions");
-    } else {
-      setCurrentStep("complete");
-    }
-  }, [isConnected, verificationComplete, permissionsComplete]);
-
   const handleVerificationComplete = (telegramHandle: string) => {
     console.log("✅ Verification completed for:", telegramHandle);
     
@@ -63,14 +58,14 @@ export default function SetupPage() {
     setVerificationComplete(true);
   };
 
-  const handlePermissionsGranted = async (result: { 
-    success: boolean; 
-    expiry: number; 
+  const handlePermissionsGranted = async (result: {
+    success: boolean;
+    expiry: number;
     sessionKey: string;
     permissionDetails?: {
       id: string;
       keyPublicKey: string;
-      permissions: any;
+      permissions: unknown;
     };
   }) => {
     if (result.success) {
@@ -167,7 +162,7 @@ export default function SetupPage() {
                 </p>
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    💡 Make sure you're using a RISE-compatible wallet (like Porto) on RISE Testnet
+                    💡 Make sure you&apos;re using a RISE-compatible wallet (like Porto) on RISE Testnet
                   </p>
                 </div>
               </div>
@@ -213,7 +208,7 @@ export default function SetupPage() {
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                   <li>📱 Open Telegram and find your bot</li>
                   <li>💬 Send a message to start interacting</li>
-                  <li>🔄 Try commands like "swap 0.1 ETH to USDC"</li>
+                  <li>🔄 Try commands like &quot;swap 0.1 ETH to USDC&quot;</li>
                   <li>📊 Check your transaction history</li>
                 </ul>
               </div>
