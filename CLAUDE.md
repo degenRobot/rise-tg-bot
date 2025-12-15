@@ -330,8 +330,8 @@ When making changes:
 
 ## Resources
 
-- [RISE Wallet SDK Docs](https://github.com/rise-chain/rise-wallet)
-- [Porto Documentation](https://docs.risechain.com)
+- [RISE Docs](https://docs.risechain.com/)
+- [Porto Documentation](https://porto.sh/)
 - [Telegraf Docs](https://telegraf.js.org)
 - [OpenRouter API](https://openrouter.ai/docs)
 - [Viem Docs](https://viem.sh)
