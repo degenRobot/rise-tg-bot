@@ -216,6 +216,10 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground">
                   Connect your RISE Smart Wallet to get started.
                 </p>
+                {/* Debug info */}
+                <div className="text-xs text-muted-foreground mb-2">
+                  Detected {connectors.length} connector(s)
+                </div>
                 {connectors.length === 0 ? (
                   <a
                     href="https://chromewebstore.google.com/detail/rise-wallet/hbbplkfdlpkdgclapcfmkdfohjfgcokj"
@@ -230,8 +234,24 @@ export default function Home() {
                 ) : (
                   <Button
                     onClick={async () => {
-                      const portoConnector = connectors.find((c) => c.id === "xyz.ithaca.porto");
-                      if (portoConnector) await connect({ connector: portoConnector });
+                      const connectorInfo = connectors.map(c => ({ 
+                        id: c.id, 
+                        name: c.name,
+                        type: c.type,
+                        icon: c.icon
+                      }));
+                      console.log("Available connectors:", connectorInfo);
+                      
+                      // The risewallet connector should be available
+                      const riseConnector = connectors[0]; // Since we only configured one connector
+                      if (riseConnector) {
+                        console.log("Connecting with:", riseConnector.name, riseConnector.id);
+                        await connect({ connector: riseConnector });
+                      } else {
+                        console.error("No connectors available. Make sure RISE Wallet extension is installed.");
+                        // Check if window.ethereum exists
+                        console.log("window.ethereum:", typeof window !== 'undefined' && (window as any).ethereum ? "exists" : "not found");
+                      }
                     }}
                     size="lg"
                     className="w-full sm:w-auto min-w-[200px]"
