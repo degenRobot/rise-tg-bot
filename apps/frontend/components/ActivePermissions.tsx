@@ -45,7 +45,7 @@ export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: 
     return (
       <Card>
         <CardContent className="text-center py-8">
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-muted-foreground">
             No active permissions for the Telegram bot
           </p>
         </CardContent>
@@ -73,13 +73,13 @@ export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: 
                       Permission ID: {permission.id.slice(0, 8)}...
                     </span>
                     {isExpired && (
-                      <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 px-2 py-1 rounded">
+                      <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 px-2 py-1 rounded">
                         Expired
                       </span>
                     )}
                   </div>
                   
-                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <div className="text-sm text-muted-foreground space-y-1">
                     <div>
                       Expires: {isExpired ? "Expired" : formatDistanceToNow(expiryDate, { addSuffix: true })}
                     </div>
@@ -90,7 +90,7 @@ export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: 
                   
                   {/* Permission Details */}
                   <details className="mt-2">
-                    <summary className="text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
+                    <summary className="text-sm text-purple-600 dark:text-purple-400 cursor-pointer hover:underline">
                       View Details
                     </summary>
                     <div className="mt-2 space-y-2 text-xs">
@@ -99,7 +99,7 @@ export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: 
                           <span className="font-medium">Allowed Calls:</span>
                           <ul className="ml-4 mt-1 space-y-1">
                             {permission.permissions.calls.map((call, idx) => (
-                              <li key={idx} className="font-mono text-gray-600 dark:text-gray-400">
+                              <li key={idx} className="font-mono text-muted-foreground">
                                 {call.to?.slice(0, 10)}... - {call.signature}
                               </li>
                             ))}
@@ -112,7 +112,7 @@ export function ActivePermissions({ permissions, onRevoke, backendKeyAddress }: 
                           <span className="font-medium">Spending Limits:</span>
                           <ul className="ml-4 mt-1 space-y-1">
                             {permission.permissions.spend.map((spend, idx) => (
-                              <li key={idx} className="text-gray-600 dark:text-gray-400">
+                              <li key={idx} className="text-muted-foreground">
                                 {spend.limit} per {spend.period}
                                 {spend.token && ` (${spend.token.slice(0, 10)}...)`}
                               </li>

@@ -50,7 +50,7 @@ export interface ExecutionResult {
 
 export interface ServiceExecutionResult {
   success: boolean;
-  error: any;
+  error?: Error | string | null;
   errorType?: ExecutionErrorType;
   data: TransactionData | null;
 }

@@ -137,7 +137,7 @@ export function registerPermissionRoutes(app: Express) {
     }
   });
 
-  // Called by frontend AFTER revokePermissions succeeds
+  
   app.post("/api/permissions/revoke", (req: Request, res: Response) => {
     try {
       const { accountAddress, permissionId } = req.body as {

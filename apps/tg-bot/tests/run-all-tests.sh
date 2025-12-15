@@ -35,6 +35,8 @@ tests=(
   "llm-routing.test.ts"
   "permission-execution.test.ts"
   "rise-relay-client.test.ts"
+  "nonce-generation.test.ts"
+  "swap-approval.test.ts"
   "e2e.test.ts"
 )
 

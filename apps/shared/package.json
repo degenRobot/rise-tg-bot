@@ -1,0 +1,26 @@
+{
+  "name": "@rise-bot/shared",
+  "version": "1.0.0",
+  "main": "./dist/contracts/index.js",
+  "types": "./dist/contracts/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts", 
+      "default": "./dist/contracts/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "viem": "^2.21.51"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

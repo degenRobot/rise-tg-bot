@@ -5,6 +5,16 @@ import { Hooks } from "rise-wallet/wagmi";
 import { useAccount } from "wagmi";
 import { buildPermissionsFromSelections } from "../config/permissions";
 
+// Helper function for safe JSON parsing
+async function readJsonSafe(res: Response) {
+  const text = await res.text();
+  try {
+    return { ok: true as const, data: JSON.parse(text), raw: text };
+  } catch {
+    return { ok: false as const, data: null, raw: text };
+  }
+}
+
 interface UseBackendPermissionsProps {
   backendKeyAddress: string;
 }
@@ -25,19 +35,6 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
     }
   });
 
-  // Log raw permissions structure with full details
-  console.log("🔍 [PERMISSIONS] Raw permissions from Hooks.usePermissions:", permissions);
-  console.log("🔍 [PERMISSIONS] Permissions count:", permissions?.length || 0);
-
-  // Check what IDs look like
-  if (permissions && permissions.length > 0) {
-    permissions.forEach((p: any, idx: number) => {
-      console.log(`🔍 [PERMISSION ${idx}] Full object:`, p);
-      console.log(`🔍 [PERMISSION ${idx}] ID:`, p.id, "Type:", typeof p.id);
-      console.log(`🔍 [PERMISSION ${idx}] Key:`, p.key);
-      console.log(`🔍 [PERMISSION ${idx}] Expiry:`, p.expiry, "Type:", typeof p.expiry);
-    });
-  }
 
   // Filter permissions for our backend key (match both EOA address and any derived P256 keys)
   // We show ALL permissions for now to allow cleanup
@@ -107,11 +104,13 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
       });
 
       console.log("Backend sync response status:", syncResponse.status);
-      const syncData = await syncResponse.json();
+      const parsed = await readJsonSafe(syncResponse);
+      const syncData = parsed.ok ? parsed.data : { error: "Failed to parse response", raw: parsed.raw };
       console.log("Backend sync response data:", syncData);
 
       if (!syncResponse.ok) {
         console.error("Failed to sync permission to backend:", syncData);
+        // Note: Not throwing here to match current behavior (grant succeeds even if backend sync fails)
       } else {
         console.log("✅ Permission synced to backend");
       }
@@ -166,12 +165,15 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
       });
 
       console.log("🗑️ [REVOKE] Backend sync response status:", syncResponse.status);
-      const syncData = await syncResponse.json();
+      const parsed = await readJsonSafe(syncResponse);
+      const syncData = parsed.ok ? parsed.data : { error: "Failed to parse response", raw: parsed.raw };
       console.log("🗑️ [REVOKE] Backend sync response data:", syncData);
 
       if (!syncResponse.ok) {
         console.error("❌ [REVOKE] Failed to sync revocation to backend:", syncData);
-        throw new Error("Permission revoked on-chain but failed to sync with backend");
+        // Note: Changed to NOT throw to match grant behavior (both should handle errors consistently)
+        // If you want both to throw, uncomment the line below and add similar throw in grant
+        // throw new Error("Permission revoked on-chain but failed to sync with backend");
       } else {
         console.log("✅ [REVOKE] Revocation synced to backend successfully");
       }

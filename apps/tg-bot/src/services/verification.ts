@@ -1,6 +1,7 @@
 import { type Address, type Hex, hashMessage, getAddress } from "viem";
 import { verifyMessage, verifyHash } from "viem/actions";
 import { z } from "zod";
+import { randomBytes } from "node:crypto";
 import { risePublicClient } from "../config/backendRiseClient.js";
 import {
   saveVerifiedLink,
@@ -33,7 +34,7 @@ export function createVerificationMessage(
     telegramId,
     telegramHandle,
     timestamp: Date.now(),
-    nonce: Math.random().toString(36).substring(2, 15),
+    nonce: randomBytes(16).toString('hex'),
   };
 
   const message = `RISE Telegram Bot Verification\n\n` +

@@ -1,4 +1,4 @@
-import { Address, encodeFunctionData, parseUnits, getContract } from "viem";
+import { Address, encodeFunctionData, parseUnits, getContract, formatUnits } from "viem";
 import { backendTransactionService } from "./backendTransactionService.js";
 import { MintableERC20ABI } from "../abi/erc20.js";
 import { UniswapV2RouterABI } from "../abi/swap.js";
@@ -56,7 +56,7 @@ class BackendSwapService {
           amountIn: amount + " " + fromToken,
           amountInWei: amountIn.toString(),
           expectedOut: expectedOut.toString(),
-          expectedOutFormatted: (Number(expectedOut) / 1e18).toFixed(4) + " " + toToken,
+          expectedOutFormatted: formatUnits(expectedOut, toTokenInfo.decimals) + " " + toToken,
           hasLiquidity: expectedOut > 0n
         });
 
@@ -156,8 +156,10 @@ class BackendSwapService {
 
     const calls: TransactionCall[] = [];
 
-    // 1. Approve call (approve max amount for convenience)
+    // Approve max amount for convenience
+    // TO DO -> we should get the max amount based on the permissions limit 
     const maxAmount = parseUnits("50", fromTokenInfo.decimals); 
+
     calls.push({
       to: fromTokenInfo.address,
       data: encodeFunctionData({

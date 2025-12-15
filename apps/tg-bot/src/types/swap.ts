@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { ExecutionErrorType } from "./transactions.js";
+import { CONTRACT_REGISTRY } from "@rise-bot/shared";
 
 /**
  * Swap Types
@@ -7,18 +8,8 @@ import type { ExecutionErrorType } from "./transactions.js";
  * Change these according to your needs
  */
 
-export const TOKENS = {
-  MockUSD: {
-    address: "0x044b54e85D3ba9ae376Aeb00eBD09F21421f7f50" as Address,
-    decimals: 18,
-    symbol: "MockUSD",
-  },
-  MockToken: {
-    address: "0x6166a6e02b4CF0e1E0397082De1B4fc9CC9D6ceD" as Address,
-    decimals: 18,
-    symbol: "MockToken",
-  },
-} as const;
+// Re-export TOKENS from shared registry for backward compatibility
+export const TOKENS = CONTRACT_REGISTRY.tokens;
 
 export type TokenSymbol = keyof typeof TOKENS;
 
@@ -33,7 +24,7 @@ export type SwapParams = {
 
 export type SwapResult = {
   success: boolean;
-  data: any;
-  error: any;
+  data: unknown;
+  error: Error | string | null;
   errorType?: ExecutionErrorType;
 };

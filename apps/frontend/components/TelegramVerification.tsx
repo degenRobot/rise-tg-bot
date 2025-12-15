@@ -183,9 +183,6 @@ export function TelegramVerification({ onVerified }: TelegramVerificationProps) 
                 onChange={(e) => setUseManualSign(e.target.checked)}
                 className="rounded text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="manual-sign" className="text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-                Debug: Use Porto provider directly
-              </label>
             </div>
           )}
 
