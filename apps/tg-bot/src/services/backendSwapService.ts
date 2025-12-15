@@ -108,7 +108,7 @@ class BackendSwapService {
         return {
           success: false,
           data: null,
-          error: result.error,
+          error: result.error || null,
           errorType: result.errorType
         };
       }
@@ -118,7 +118,7 @@ class BackendSwapService {
       return {
         success: false,
         data: null,
-        error
+        error: error instanceof Error ? error : new Error(String(error))
       };
     }
   }

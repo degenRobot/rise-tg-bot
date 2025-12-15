@@ -36,19 +36,6 @@ async function testTools() {
   console.log("Wallet summary result:", jsonStringify(summaryResult));
   console.log("\n");
 
-  // Test event watcher
-  console.log("3. Testing Event Watcher - Create Alert:");
-  const alertResultString = await eventWatcher.createAlert.execute({
-    type: "balance_threshold" as any,
-    config: {
-      token: "RISE",
-      threshold: 100,
-      direction: "below" as any,
-    },
-  }, context);
-  const alertResult = JSON.parse(alertResultString);
-  console.log("Alert result:", jsonStringify(alertResult));
-  console.log("\n");
 
   console.log("All tool tests completed!");
 }

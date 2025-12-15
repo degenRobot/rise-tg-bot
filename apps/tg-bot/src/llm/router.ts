@@ -305,11 +305,16 @@ export function createLlmRouter() {
             });
 
             if (!swapResult.success) {
-              return getErrorResponse(swapResult.errorType, swapResult.error || swapResult.error?.message);
+              const errorMessage = typeof swapResult.error === 'string'
+                ? swapResult.error
+                : swapResult.error instanceof Error
+                ? swapResult.error.message
+                : 'Unknown error';
+              return getErrorResponse(swapResult.errorType, errorMessage);
             }
 
-            const totalTxs = swapResult.data?.totalTransactions || 1;
-            const txHash = swapResult.data?.hash;
+            const totalTxs = (swapResult.data as { totalTransactions?: number })?.totalTransactions || 1;
+            const txHash = (swapResult.data as { hash?: string })?.hash;
             const baseMessage = `✅ Successfully swapped ${parsed.params.amount} ${parsed.params.fromToken} for ${parsed.params.toToken}!\n\n${totalTxs} transaction(s) executed using session key`;
             
             return txHash

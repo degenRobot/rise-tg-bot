@@ -67,7 +67,7 @@ class BackendTransactionService {
       console.error("❌ Backend transaction execution failed:", error);
       return {
         success: false,
-        error,
+        error: error instanceof Error ? error : new Error(String(error)),
         data: null
       };
     }
