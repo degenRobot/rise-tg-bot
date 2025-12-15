@@ -171,6 +171,7 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
 
       if (!syncResponse.ok) {
         console.error("❌ [REVOKE] Failed to sync revocation to backend:", syncData);
+        throw new Error("Permission revoked on-chain but failed to sync with backend");
       } else {
         console.log("✅ [REVOKE] Revocation synced to backend successfully");
       }

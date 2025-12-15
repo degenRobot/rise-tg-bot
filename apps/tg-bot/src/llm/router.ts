@@ -105,7 +105,7 @@ export function createLlmRouter() {
 
         if (parsed.tool === "get_address") {
           if (!userAddress) {
-            return " Your wallet is not linked yet. Use /link to connect your wallet.";
+            return "Your wallet is not linked yet. Use /link to connect your wallet.";
           }
           return `Your wallet address: ${userAddress}`;
         }

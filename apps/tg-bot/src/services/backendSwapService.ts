@@ -26,7 +26,7 @@ class BackendSwapService {
     console.log(`Executing swap`);
     console.log(`   ${amount} ${fromToken} → ${toToken}`);
     console.log(`   User: ${userAddress}`);
-    console.log (`  Slippage (not used): ${slippagePercent}`)
+    console.log(`   Slippage: ${slippagePercent}%`)
 
     try {
       // Check liquidity and get expected output before attempting swap
@@ -69,7 +69,13 @@ class BackendSwapService {
           };
         }
       } catch (liquidityError) {
-        console.warn(`Could not check liquidity (continuing anyway):`, liquidityError);
+        console.error(`Liquidity check failed:`, liquidityError);
+        return {
+          success: false,
+          data: null,
+          error: `Could not verify pool liquidity: ${liquidityError instanceof Error ? liquidityError.message : String(liquidityError)}`,
+          errorType: "unknown"
+        };
       }
 
       // Build transaction calls with actual expected output (if available)
@@ -142,9 +148,8 @@ class BackendSwapService {
         formatted: `${(Number(amountOutMin) / 1e18).toFixed(4)} ${toToken}`
       });
     } else {
-      // No pool quote available - use minimal slippage protection (1% of input)
-      amountOutMin = amountIn / 100n;
-      console.warn(`⚠️  No pool quote available, using minimal protection: ${amountOutMin.toString()}`);
+      // No pool quote available - fail safe rather than proceed with no protection
+      throw new Error("Could not verify pool liquidity. Swap aborted for safety.");
     }
 
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200); // 20 minutes

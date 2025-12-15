@@ -4,7 +4,6 @@ import { Telegraf } from "telegraf";
 import cors from "cors";
 import { registerPermissionRoutes } from "./routes/permissions.js";
 import { createLlmRouter } from "./llm/router.js";
-import { getBackendP256PublicKey } from "./services/backendSessionKey.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) {

@@ -1,5 +1,4 @@
 import { Address } from "viem";
-import { risePublicClient } from "../config/backendRiseClient.js";
 import { executeWithBackendPermission } from "./portoExecution.js";
 import type {
   TransactionCall,

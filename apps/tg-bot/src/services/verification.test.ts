@@ -81,8 +81,8 @@ describe('VerificationService', () => {
     });
 
     it('should handle smart wallet verification fallback', async () => {
-      const { riseRelayClient } = await import('../config/backendRiseClient.js');
-      (riseRelayClient.getBytecode as any).mockResolvedValue('0xcode'); // Is contract
+      const { risePublicClient } = await import('../config/backendRiseClient.js');
+      (risePublicClient.getBytecode as any).mockResolvedValue('0xcode'); // Is contract
       
       (verifyMessage as any).mockResolvedValue(false); // Viem fails initially
       

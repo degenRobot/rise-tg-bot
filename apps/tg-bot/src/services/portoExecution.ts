@@ -142,7 +142,7 @@ export async function executeWithBackendPermission(params: {
           throw new Error(`Transaction failed with status ${statusResult?.status || 'unknown'}: No transaction hash available`);
         }
       } catch (statusError) {
-        console.log("⚠️  Could not fetch transaction status (non-critical):", statusError);
+        console.error("❌ Failed to fetch transaction status:", statusError);
         throw statusError;
       }
     }

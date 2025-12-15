@@ -73,10 +73,12 @@ export function getVerifiedLink(telegramId: string): VerifiedLink | null {
 
 /**
  * Revoke a verified link
+ * Searches in reverse to match getVerifiedLink behavior (most recent first)
  */
 export function revokeVerifiedLink(telegramId: string): boolean {
   const links = readVerifiedLinksFile();
-  const link = links.find(l => l.telegramId === telegramId);
+  // Search in reverse to get the most recent active link first
+  const link = [...links].reverse().find(l => l.telegramId === telegramId && l.active);
 
   if (!link) {
     return false;
