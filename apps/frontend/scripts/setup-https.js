@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const certsDir = path.join(__dirname, '..', 'certs');
 
@@ -62,7 +66,7 @@ try {
   try {
     execSync('mkcert -install', { stdio: 'inherit' });
   } catch (error) {
-    console.log('⚠️  CA may already be installed or install failed');
+    console.error(`❌ Error: ${error} `);
   }
 
   // Remove existing certificates to regenerate them

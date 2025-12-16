@@ -1,4 +1,4 @@
-import { CONTRACT_REGISTRY, PermissionBuilder } from "@rise-bot/shared/contracts";
+import { PermissionBuilder } from "@rise-bot/shared/contracts";
 
 // Build default permissions using the shared permission builder
 const defaultPermissions = PermissionBuilder.createDefaultPermissions().build();
@@ -19,11 +19,13 @@ export function buildPermissionsFromSelections(selections: {
 }) {
   const calls = PERMISSION_ITEMS.calls
     .filter(item => selections.calls.includes(item.id))
-    .map(item => item.call);
+    .map(item => item.call)
+    .filter((call): call is NonNullable<typeof call> => call !== undefined);
 
   const spend = PERMISSION_ITEMS.spend
     .filter(item => selections.spend.includes(item.id))
-    .map(item => item.spend);
+    .map(item => item.spend)
+    .filter((spendItem): spendItem is NonNullable<typeof spendItem> => spendItem !== undefined);
 
   return {
     calls,

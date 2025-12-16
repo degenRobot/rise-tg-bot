@@ -12,10 +12,12 @@
     "build:tg-bot": "pnpm --filter tg-bot build",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "test:bot": "cd apps/tg-bot && ./tests/run-all-tests.sh"
+    "test:bot": "cd apps/tg-bot && ./tests/run-all-tests.sh",
+    "generate-key": "tsx scripts/generate-p256-key.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3"
   }
 }

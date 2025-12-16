@@ -20,14 +20,15 @@ async function testSwapApprovalAmounts() {
     const fromToken = "MockUSD";
     const toToken = "MockToken";
     const amountIn = parseUnits(test.amount, TOKENS[fromToken].decimals);
-    
+
     try {
       // Build swap calls
-      const { calls } = backendSwapService.buildSwapCalls({
+      const calls = (backendSwapService as any).buildSwapCalls({
         fromToken,
         toToken,
-        amountIn,
+        amount: test.amount,
         userAddress: "0x0000000000000000000000000000000000000000", // dummy address for test
+        expectedOut: 1000000000000000000n, // 1 token in wei for testing
       });
 
       // Check that we have 2 calls (approve + swap)

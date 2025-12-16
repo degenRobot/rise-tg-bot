@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import "dotenv/config";
 import { privateKeyToAccount } from "viem/accounts";
 

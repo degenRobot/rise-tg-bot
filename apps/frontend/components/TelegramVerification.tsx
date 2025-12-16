@@ -173,18 +173,6 @@ export function TelegramVerification({ onVerified }: TelegramVerificationProps) 
             </div>
           </div>
 
-          {/* Sign Mode Toggle (Debug) */}
-          {connector?.name === "Porto" && (
-            <div className="flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md border border-gray-100 dark:border-gray-800">
-              <input
-                type="checkbox"
-                id="manual-sign"
-                checked={useManualSign}
-                onChange={(e) => setUseManualSign(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500"
-              />
-            </div>
-          )}
 
           {/* Verify Button */}
           <Button

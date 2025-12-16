@@ -82,7 +82,7 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
       // Convert BigInt values to strings for JSON serialization
       const serializablePermissions = {
         calls: permissionData.calls,
-        spend: permissionData.spend?.map((s: any) => ({
+        spend: permissionData.spend?.map((s) => ({
           ...s,
           limit: s.limit.toString(), // Convert BigInt to string
         })),
@@ -182,7 +182,7 @@ export function useBackendPermissions({ backendKeyAddress }: UseBackendPermissio
       console.error("❌ [REVOKE] Error details:", JSON.stringify(error, null, 2));
       throw error;
     }
-  }, [isConnected, address, revokePermissions, permissions, refetchPermissions]);
+  }, [isConnected, address, revokePermissions, permissions]);
 
   return {
     permissions: backendPermissions,

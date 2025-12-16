@@ -1,10 +1,11 @@
 /**
  * Test RISE Relay Client Implementation
- * 
+ *
  * Tests the direct relay client approach with correct wallet-demo parameter structure.
  * Wagmi connectors require browser environment, so we use direct relay for backend.
  */
 
+/// <reference types="node" />
 import { risePublicClient, portoClient } from "../src/config/backendRiseClient.js";
 import { backendTransactionService } from "../src/services/backendTransactionService.js";
 import { backendSwapService } from "../src/services/backendSwapService.js";
@@ -116,9 +117,10 @@ async function testRiseRelayClient() {
       });
     } else {
       console.error("❌ Simple transaction failed:", result.error);
+      const err = result.error;
       console.error("Error details:", {
-        message: result.error?.message,
-        stack: result.error?.stack,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
       });
     }
 
@@ -145,18 +147,20 @@ async function testRiseRelayClient() {
 
     if (swapResult.success) {
       console.log(" Swap execution successful!");
+      const data = swapResult.data as { hash?: string; usedSessionKey?: boolean; totalTransactions?: number };
       console.log(" Swap result:", {
-        hash: swapResult.data?.hash?.slice(0, 10) + "...",
-        usedSessionKey: swapResult.data?.usedSessionKey,
-        totalTransactions: swapResult.data?.totalTransactions,
+        hash: data?.hash?.slice(0, 10) + "...",
+        usedSessionKey: data?.usedSessionKey,
+        totalTransactions: data?.totalTransactions,
       });
-      console.log(` Explorer: https://explorer.testnet.riselabs.xyz/tx/${swapResult.data?.hash}`);
+      console.log(` Explorer: https://explorer.testnet.riselabs.xyz/tx/${data?.hash}`);
     } else {
       console.error("❌ Swap execution failed:", swapResult.error);
+      const err = swapResult.error;
       console.error("Error details:", {
-        message: swapResult.error?.message,
-        name: swapResult.error?.name,
-        stack: swapResult.error?.stack,
+        message: err instanceof Error ? err.message : String(err),
+        name: err instanceof Error ? err.name : undefined,
+        stack: err instanceof Error ? err.stack : undefined,
       });
     }
 

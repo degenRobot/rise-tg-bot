@@ -7,14 +7,14 @@ import { Card, CardHeader, CardContent } from "./Card";
 import { Address } from "viem";
 
 interface GrantPermissionsProps {
-  onGranted: (result: { 
-    success: boolean; 
-    expiry: number; 
-    sessionKey: string; 
+  onGranted: (result: {
+    success: boolean;
+    expiry: number;
+    sessionKey: string;
     permissionDetails?: {
       id: string;
       keyPublicKey: string;
-      permissions: any;
+      permissions: unknown;
     };
   }) => void;
   backendKeyAddress: string;
@@ -44,8 +44,8 @@ export function GrantPermissions({ onGranted, backendKeyAddress }: GrantPermissi
       }
 
       // Get Porto provider for direct wallet calls
-      const provider = (window as any).porto?.provider;
-      if (!provider) {
+      const provider = (window as { porto?: { provider?: unknown } }).porto?.provider;
+      if (!provider || typeof provider !== 'object' || !('request' in provider)) {
         throw new Error("Porto provider not available. Please ensure RISE wallet is connected.");
       }
 
@@ -90,7 +90,7 @@ export function GrantPermissions({ onGranted, backendKeyAddress }: GrantPermissi
 
       // Call wallet_grantPermissions via Porto provider
       console.log("🔐 Calling wallet_grantPermissions...");
-      const grantResult = await provider.request({
+      const grantResult = await (provider as { request: (args: { method: string; params: unknown[] }) => Promise<unknown> }).request({
         method: "wallet_grantPermissions",
         params: [{
           key: {
@@ -105,12 +105,12 @@ export function GrantPermissions({ onGranted, backendKeyAddress }: GrantPermissi
       console.log("✅ Grant permissions result:", grantResult);
 
       // Extract permission details from result for backend sync
-      let permissionDetails = null;
+      let permissionDetails: { id: string; keyPublicKey: string; permissions: unknown } | undefined;
       if (grantResult && typeof grantResult === 'object') {
         // Try to extract permission ID and details from grant result
         const resultArray = Array.isArray(grantResult) ? grantResult : [grantResult];
-        const firstResult = resultArray[0];
-        
+        const firstResult = resultArray[0] as { id?: string };
+
         if (firstResult && firstResult.id) {
           permissionDetails = {
             id: firstResult.id,
@@ -133,18 +133,18 @@ export function GrantPermissions({ onGranted, backendKeyAddress }: GrantPermissi
 
       setSuccess(true);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Grant permissions error:", error);
-      
-      let errorMessage = error?.message || "Failed to grant permissions";
-      
+
+      let errorMessage = error instanceof Error ? error.message : "Failed to grant permissions";
+
       // Handle common error cases
       if (errorMessage.includes("User rejected") || errorMessage.includes("User denied")) {
         errorMessage = "Permission grant rejected by user";
       } else if (errorMessage.includes("not available") || errorMessage.includes("not found")) {
         errorMessage = "RISE wallet not properly connected. Please reconnect your wallet.";
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsGranting(false);
