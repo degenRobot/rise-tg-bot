@@ -12,10 +12,11 @@ pnpm install
 
 # Set up environment variables (see Setup section)
 cp .env.example .env
-cp apps/frontend/.env.local.example apps/frontend/.env.local
+cp apps/frontend/.env.example apps/frontend/.env.local
 
 # Generate P256 backend session key
 pnpm generate-key
+# Copy private key to .env and public key to apps/frontend/.env.local
 
 # Generate SSL certs for local HTTPS (required for WebAuthn)
 cd apps/frontend && npm run generate-certs && cd ../..
@@ -203,25 +204,27 @@ pnpm install
 Copy the example env files:
 
 ```bash
-# Root .env (for shared or bot config)
+# Root .env (for bot backend)
 cp .env.example .env
 
-# Frontend .env
-cp apps/frontend/.env.local.example apps/frontend/.env.local
+# Frontend .env.local
+cp apps/frontend/.env.example apps/frontend/.env.local
 ```
 
 **Required Variables:**
 
 *   **Frontend** (`apps/frontend/.env.local`):
     *   `NEXT_PUBLIC_TELEGRAM_BOT_NAME`: Your Telegram bot username (without @).
-    *   `NEXT_PUBLIC_BACKEND_KEY_ADDRESS`: The public address of the backend EOA key (see Step 3).
+    *   `NEXT_PUBLIC_BACKEND_KEY_ADDRESS`: The P256 public key from backend (see Step 3). This is a 130-character hex string starting with `0x`.
     *   `NEXT_PUBLIC_API_URL`: Backend API URL (e.g., `http://localhost:8008` or your ngrok URL).
 
 *   **Bot** (`.env` in root):
     *   `TELEGRAM_BOT_TOKEN`: Token from @BotFather.
-    *   `BACKEND_SIGNER_PRIVATE_KEY`: Private key for the backend EOA (starts with `0x`).
+    *   `BACKEND_SIGNER_PRIVATE_KEY`: P256 private key for backend session key (starts with `0x`, 32 bytes).
     *   `OPENROUTER_API_KEY`: API key for OpenRouter (used for LLM/NLP).
-    *   `RISE_CHAIN_ID`: Chain ID (e.g., `11155931` for Testnet).
+    *   `RISE_RPC_URL`: RISE blockchain RPC endpoint (default: `https://testnet.riselabs.xyz`).
+    *   `PORT`: Backend API port (default: `8008`).
+    *   `FRONTEND_URL`: Frontend URL for CORS (e.g., `http://localhost:3000`).
 
 ### 3. Backend P256 Session Key
 
@@ -231,13 +234,24 @@ The bot uses a **P256 (secp256r1) session key** for Porto relay mode execution. 
 pnpm generate-key
 ```
 
-This creates a `.p256-key.json` file in the project root with your backend session key.
+This will output:
+- **Private Key**: Add to `.env` as `BACKEND_SIGNER_PRIVATE_KEY`
+- **Public Key**: Add to `apps/frontend/.env.local` as `NEXT_PUBLIC_BACKEND_KEY_ADDRESS`
 
-Copy the public key from the output and set it in:
-- **Frontend** `.env.local`: `NEXT_PUBLIC_BACKEND_KEY_ADDRESS=0x<public_key>`
-- **Bot** `.env`: The script automatically reads from `.p256-key.json`
+Example output:
+```
+✅ Generated P256 Key:
+Private Key: 0x...
+Public Key: 0x...
 
-⚠️ **Security Note**: Never commit `.p256-key.json` to version control. It's already in `.gitignore`. Generate a fresh key for production.
+📝 Add this to your .env file:
+BACKEND_SIGNER_PRIVATE_KEY=0x...
+
+📝 And this to frontend .env.local:
+NEXT_PUBLIC_BACKEND_KEY_ADDRESS=0x...
+```
+
+⚠️ **Security Note**: The private key grants full access to execute transactions on behalf of users (within their granted permissions). Keep it secure and never commit to version control.
 
 ### 4. Create Telegram Bot
 
