@@ -52,14 +52,16 @@ class BackendTransactionService {
             success: true,
             usedSessionKey: true,
             totalTransactions: calls.length,
-          }
+          },
+          transactionHashes: result.transactionHashes
         };
       } else {
         return {
           success: false,
           error: result.error,
           errorType: result.errorType,
-          data: null
+          data: null,
+          transactionHashes: result.transactionHashes
         };
       }
 

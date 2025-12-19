@@ -34,6 +34,10 @@ export async function executeWithBackendPermission(params: {
     backendKey: backendPublicKey.slice(0, 20) + "...",
   });
 
+  // Declare these at function scope so they're accessible in catch block
+  let callsId = "unknown";
+  let transactionHashes: string[] = [];
+
   try {
     // 1) Find the active permission for this wallet + backend key
     let permission = findActivePermissionForBackendKey({
@@ -87,9 +91,6 @@ export async function executeWithBackendPermission(params: {
     console.log("📦 Send calls result:", result);
 
     // Process result
-    let callsId = "unknown";
-    let transactionHashes: string[] = [];
-
     if (Array.isArray(result) && result.length > 0) {
       const firstResult = result[0];
       callsId = firstResult.id || firstResult.callsId || firstResult.hash || "unknown";
@@ -169,6 +170,31 @@ export async function executeWithBackendPermission(params: {
 
     let errorMessage = error instanceof Error ? error.message : String(error);
     let errorType: ExecutionErrorType = "unknown";
+    let failedTransactionHashes: string[] = [];
+
+    // Try to extract transaction hashes even on failure
+    // This is useful for debugging reverted transactions
+    if (callsId && callsId !== "unknown") {
+      try {
+        console.log(`🔍 Attempting to get transaction hash despite error for calls ID: ${callsId}`);
+        const statusResult = await (portoClient as any).request({
+          method: 'wallet_getCallsStatus',
+          params: [callsId],
+        });
+
+        if (statusResult?.receipts && Array.isArray(statusResult.receipts) && statusResult.receipts.length > 0) {
+          failedTransactionHashes = statusResult.receipts
+            .map((r: any) => r.transactionHash)
+            .filter((h: any) => h);
+          console.log(`📦 Found transaction hash(es) for failed transaction:`, failedTransactionHashes);
+        } else if (statusResult?.transactionHash) {
+          failedTransactionHashes = [statusResult.transactionHash];
+          console.log(`📦 Found transaction hash for failed transaction:`, failedTransactionHashes[0]);
+        }
+      } catch (statusError) {
+        console.log("⚠️  Could not retrieve transaction hash for failed transaction");
+      }
+    }
 
     if (errorMessage.includes("Session key expired")) {
       errorType = "expired_session";
@@ -189,9 +215,10 @@ export async function executeWithBackendPermission(params: {
 
     return {
       success: false,
-      callsId: "error",
+      callsId: callsId || "error",
       error: errorMessage,
       errorType,
+      transactionHashes: failedTransactionHashes.length > 0 ? failedTransactionHashes : undefined,
     };
   }
 }

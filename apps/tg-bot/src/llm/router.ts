@@ -14,15 +14,26 @@ const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
 });
 
-function getErrorResponse(errorType: string | undefined, errorMsg: any): string {
+function getErrorResponse(errorType: string | undefined, errorMsg: any, transactionHashes?: string[]): string {
+  let baseMessage = '';
+
   if (errorType === 'expired_session') {
-    return `Your session key has expired. Please renew your permissions:\nhttps://rise-bot.com/grant`;
+    baseMessage = `Your session key has expired. Please renew your permissions`;
   } else if (errorType === 'no_permission') {
-    return `You haven't granted permission for this action yet. Please grant permissions:\nhttps://rise-bot.com/grant`;
+    baseMessage = `You haven't granted permission for this action yet`;
   } else if (errorType === 'unauthorized') {
-    return `Unauthorized: You don't have the required permissions for this action. Please update your permissions:\nhttps://rise-bot.com/grant`;
+    baseMessage = `Unauthorized: You don't have the required permissions for this action. Please update your permissions`;
+  } else {
+    baseMessage = `❌ Transaction failed: ${errorMsg instanceof Error ? errorMsg.message : String(errorMsg)}`;
   }
-  return `❌ Transaction failed: ${errorMsg instanceof Error ? errorMsg.message : String(errorMsg)}`;
+
+  // Add transaction hash if available (for debugging reverted transactions)
+  if (transactionHashes && transactionHashes.length > 0) {
+    const txHash = transactionHashes[0];
+    baseMessage += `\n\n🔍 Transaction hash: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`;
+  }
+
+  return baseMessage;
 }
 
 export function createLlmRouter() {
@@ -230,7 +241,7 @@ export function createLlmRouter() {
                  ? `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`
                  : `✅ Successfully minted ${parsed.params.tokenSymbol} to your wallet!`;
             } else {
-               return getErrorResponse(result.errorType, result.error);
+               return getErrorResponse(result.errorType, result.error, result.transactionHashes);
             }
           } catch(error) {
             console.error("Mint error:", error);
@@ -283,7 +294,7 @@ export function createLlmRouter() {
                  ? `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!\n\nTransaction: ${txHash.slice(0, 10)}...\nExplorer: https://explorer.testnet.riselabs.xyz/tx/${txHash}`
                  : `✅ Successfully transferred ${parsed.params.amount} ${parsed.params.tokenSymbol}!`;
             } else {
-               return getErrorResponse(result.errorType, result.error);
+               return getErrorResponse(result.errorType, result.error, result.transactionHashes);
             }
           } catch(error) {
             console.error("Transfer error:", error);
@@ -310,7 +321,7 @@ export function createLlmRouter() {
                 : swapResult.error instanceof Error
                 ? swapResult.error.message
                 : 'Unknown error';
-              return getErrorResponse(swapResult.errorType, errorMessage);
+              return getErrorResponse(swapResult.errorType, errorMessage, swapResult.transactionHashes);
             }
 
             const totalTxs = (swapResult.data as { totalTransactions?: number })?.totalTransactions || 1;

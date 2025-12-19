@@ -27,4 +27,5 @@ export type SwapResult = {
   data: unknown;
   error: Error | string | null;
   errorType?: ExecutionErrorType;
+  transactionHashes?: string[];
 };

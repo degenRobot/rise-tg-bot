@@ -101,7 +101,8 @@ class BackendSwapService {
         return {
           success: true,
           data: result.data,
-          error: null
+          error: null,
+          transactionHashes: result.transactionHashes
         };
       } else {
         console.error("❌ Swap execution failed:", result.error);
@@ -109,7 +110,8 @@ class BackendSwapService {
           success: false,
           data: null,
           error: result.error || null,
-          errorType: result.errorType
+          errorType: result.errorType,
+          transactionHashes: result.transactionHashes
         };
       }
 

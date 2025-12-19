@@ -53,4 +53,5 @@ export interface ServiceExecutionResult {
   error?: Error | string | null;
   errorType?: ExecutionErrorType;
   data: TransactionData | null;
+  transactionHashes?: string[];
 }
