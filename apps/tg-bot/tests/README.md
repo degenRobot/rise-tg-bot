@@ -36,7 +36,6 @@
 Historical and debugging tests that are no longer actively used but kept for reference:
 
 - `test-backend-wagmi.ts` - Old wagmi backend (replaced by relay client)
-- `test-porto-connector.ts` - Porto connector tests (replaced by relay client) 
 - `test-session-key-signing.ts` - Session key signing (integrated into transaction service)
 - `test-wallet-demo-pattern.ts` - Wallet demo patterns (integrated into transaction service)
 - `test-sendpreparedcalls-debug.ts` - SendPreparedCalls debugging (issue resolved)

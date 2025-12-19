@@ -1,5 +1,5 @@
 import { http, createPublicClient } from "viem";
-import { Chains, Porto, Mode } from "rise-wallet";
+import { Chains, RiseWallet, Mode } from "rise-wallet";
 import * as RelayClient from "rise-wallet/viem/RelayClient";
 import { config } from "dotenv";
 import { resolve } from "path";
@@ -22,7 +22,7 @@ if (!BACKEND_SIGNER_PRIVATE_KEY) {
  */
 
 // Create Porto instance with relay mode for backend use
-export const porto = Porto.create({
+export const porto = RiseWallet.create({
   chains: [Chains.riseTestnet],
   mode: Mode.relay(),
   relay: http("https://relay.wallet.risechain.com"),

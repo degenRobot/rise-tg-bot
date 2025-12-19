@@ -26,7 +26,6 @@ class BackendTransactionService {
     const { calls } = props;
 
     try {
-      // Convert calls to Porto format
       const portoCalls: Call[] = calls.map(call => ({
         to: call.to,
         data: call.data,

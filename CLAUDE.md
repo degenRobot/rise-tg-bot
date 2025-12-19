@@ -6,7 +6,7 @@ This document helps AI agents (like Claude, ChatGPT, or custom LLM agents) under
 
 **What**: A Telegram bot that lets users control their RISE blockchain smart wallets using natural language.
 
-**Key Tech**: Porto SDK (account abstraction), P256 session keys, OpenRouter LLM routing, Next.js frontend, Express backend.
+**Key Tech**: RISE Wallet SDK (account abstraction), P256 session keys, OpenRouter LLM routing, Next.js frontend, Express backend.
 
 **Main Goal**: Users can say "swap 10 mockusd for mocktoken" in Telegram and the bot executes it on-chain.
 
@@ -41,7 +41,7 @@ This document helps AI agents (like Claude, ChatGPT, or custom LLM agents) under
          │ Signs & sends to relay
          ▼
 ┌──────────────────────────────────┐
-│  RISE Blockchain (via Porto)     │
+│  RISE Testnet    │
 │  - Uniswap V2 Router             │
 │  - ERC20 Tokens                  │
 └──────────────────────────────────┘
