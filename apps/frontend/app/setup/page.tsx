@@ -162,7 +162,7 @@ export default function SetupPage() {
                 </p>
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    💡 Make sure you&apos;re using a RISE-compatible wallet (like Porto) on RISE Testnet
+                    💡 Make sure you&apos;re using RISE Wallet 
                   </p>
                 </div>
               </div>

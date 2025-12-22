@@ -24,7 +24,7 @@ async function testRiseRelayClient() {
   // Test 1: Basic client connectivity
   console.log("\nTesting relay client connectivity...");
   try {
-    console.log(" Porto Client:", {
+    console.log(" Client:", {
       client: typeof portoClient,
       transport: typeof portoClient.transport,
       hasRequest: typeof portoClient.request === 'function',

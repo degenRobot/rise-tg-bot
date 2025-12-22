@@ -6,7 +6,7 @@ This document helps AI agents (like Claude, ChatGPT, or custom LLM agents) under
 
 **What**: A Telegram bot that lets users control their RISE blockchain smart wallets using natural language.
 
-**Key Tech**: Porto SDK (account abstraction), P256 session keys, OpenRouter LLM routing, Next.js frontend, Express backend.
+**Key Tech**: RISE Wallet SDK (account abstraction), P256 session keys, OpenRouter LLM routing, Next.js frontend, Express backend.
 
 **Main Goal**: Users can say "swap 10 mockusd for mocktoken" in Telegram and the bot executes it on-chain.
 
@@ -41,7 +41,7 @@ This document helps AI agents (like Claude, ChatGPT, or custom LLM agents) under
          │ Signs & sends to relay
          ▼
 ┌──────────────────────────────────┐
-│  RISE Blockchain (via Porto)     │
+│  RISE Testnet    │
 │  - Uniswap V2 Router             │
 │  - ERC20 Tokens                  │
 └──────────────────────────────────┘
@@ -81,8 +81,9 @@ The backend uses **P256 (secp256r1)** keys, which are different from standard Et
 ```typescript
 // Location: apps/tg-bot/src/services/backendSessionKey.ts
 export function getOrCreateBackendSessionKey(): P256Credential {
-  // Reads from .p256-key.json
-  // Returns { publicKey, sign } for Porto SDK
+  // Reads BACKEND_SIGNER_PRIVATE_KEY from .env
+  // Derives P256 public key from private key
+  // Returns { publicKey, type, role } for Porto SDK
 }
 ```
 
@@ -231,16 +232,21 @@ pnpm --filter tg-bot test:watch
 ### Bot (.env in root)
 ```bash
 TELEGRAM_BOT_TOKEN=<from @BotFather>
+BACKEND_SIGNER_PRIVATE_KEY=<P256 private key, 32 bytes hex>
+RISE_RPC_URL=https://testnet.riselabs.xyz
 OPENROUTER_API_KEY=<for LLM routing>
 PORT=8008
+FRONTEND_URL=http://localhost:3000
 ```
 
 ### Frontend (apps/frontend/.env.local)
 ```bash
 NEXT_PUBLIC_TELEGRAM_BOT_NAME=<bot_username_without_@>
-NEXT_PUBLIC_BACKEND_KEY_ADDRESS=<P256_public_key_from_.p256-key.json>
+NEXT_PUBLIC_BACKEND_KEY_ADDRESS=<P256_public_key_from_backend_logs>
 NEXT_PUBLIC_API_URL=http://localhost:8008
 ```
+
+**Note**: Run `pnpm generate-key` at the project root to get both keys at once.
 
 ## Data Storage (JSON Files)
 
@@ -248,7 +254,8 @@ All persistence is currently file-based in `apps/tg-bot/data/`:
 
 1. **`permissions.json`**: Stores granted permissions (synced from frontend)
 2. **`verified-links.json`**: Maps Telegram IDs to wallet addresses
-3. **`.p256-key.json`**: Backend session key (in project root, gitignored)
+
+**Backend session key** is stored in `.env` as `BACKEND_SIGNER_PRIVATE_KEY`. The backend derives the P256 public key on startup.
 
 **For production**: Migrate to PostgreSQL/Redis for proper concurrency and durability.
 
@@ -288,7 +295,7 @@ cast call 0x6c10B45251F5D3e650bcfA9606c662E695Af97ea \
   "[0xTOKEN_A,0xTOKEN_B]" \
   --rpc-url https://testnet.riselabs.xyz
 
-# Generate new P256 key
+# Generate P256 key pair (outputs both private and public keys)
 pnpm generate-key
 ```
 

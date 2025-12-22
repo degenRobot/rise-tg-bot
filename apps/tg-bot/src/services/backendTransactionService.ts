@@ -26,7 +26,6 @@ class BackendTransactionService {
     const { calls } = props;
 
     try {
-      // Convert calls to Porto format
       const portoCalls: Call[] = calls.map(call => ({
         to: call.to,
         data: call.data,
@@ -52,14 +51,16 @@ class BackendTransactionService {
             success: true,
             usedSessionKey: true,
             totalTransactions: calls.length,
-          }
+          },
+          transactionHashes: result.transactionHashes
         };
       } else {
         return {
           success: false,
           error: result.error,
           errorType: result.errorType,
-          data: null
+          data: null,
+          transactionHashes: result.transactionHashes
         };
       }
 

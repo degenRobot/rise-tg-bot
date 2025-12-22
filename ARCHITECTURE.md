@@ -98,7 +98,7 @@ User → Frontend → Backend API → Signature Verification → Storage
 ### 3. Natural Language Transaction Flow
 
 ```
-User → Telegram → Bot → LLM → Services → Porto → Blockchain
+User → Telegram → Bot → LLM → Services → RISE Wallet → Blockchain
 
 1. User: "swap 10 USD for tokens"
 2. Bot receives message via webhook
@@ -108,7 +108,7 @@ User → Telegram → Bot → LLM → Services → Porto → Blockchain
    - From: USD
    - To: tokens
 4. Backend services build transaction
-5. Porto signs with session key
+5. RISE Wallet signs with session key
 6. Transaction submitted to relay
 7. User receives confirmation
 ```
@@ -189,7 +189,7 @@ interface StoredPermission {
 - Expiry management
 - Audit trail
 
-#### 4. Porto Execution (`src/services/portoExecution.ts`)
+#### 4. RISE Wallet Execution (`src/services/portoExecution.ts`)
 ```typescript
 interface ExecutionResult {
   success: boolean;
@@ -308,7 +308,7 @@ File Storage → PostgreSQL/Redis
 
 2. **Integration Tests**
    - API endpoints
-   - Porto relay interaction
+   - RISE Wallet relay interaction
    - Permission flows
 
 3. **Security Tests**

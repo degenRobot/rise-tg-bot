@@ -84,9 +84,7 @@ async function testRealPermissionExecution() {
       
       if (result.error.toString().includes("Invalid precall")) {
         console.log("\n💡 Analysis: Still getting 'Invalid precall' error");
-        console.log("   This suggests the permission ID might not be the actual Porto permission ID");
         console.log("   The permission ID from the frontend logs might be the backend key address");
-        console.log("   We need to check the actual Porto grant result structure");
       } else if (result.error.toString().includes("No active permission")) {
         console.log("\n💡 Analysis: Permission lookup failed");
         console.log("   Check if permission was stored correctly");

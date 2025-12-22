@@ -2,7 +2,7 @@
   "name": "rise-tg-bot-monorepo",
   "private": true,
   "scripts": {
-    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:frontend": "pnpm --filter frontend dev --experimental-https",
     "dev:tg-bot": "pnpm --filter tg-bot dev",
     "dev:all": "concurrently -n \"frontend,bot\" -c \"blue,green\" \"pnpm dev:frontend\" \"pnpm dev:tg-bot\"",
     "dev": "node scripts/dev-simple.js",
@@ -19,5 +19,9 @@
     "concurrently": "^9.2.1",
     "tsx": "^4.21.0",
     "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "ox": "^0.10.5",
+    "rise-wallet": "^0.3.0"
   }
 }
