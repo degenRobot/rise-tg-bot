@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "generate-certs": "node scripts/setup-https.js",
-    "dev": "npm run dev:https",
+    "dev": "next dev --experimental-https",
     "dev:http": "next dev",
     "dev:https": "next dev --experimental-https --experimental-https-key ./certs/localhost-key.pem --experimental-https-cert ./certs/localhost.pem",
     "build": "next build",
@@ -18,7 +18,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
-    "next": "16.0.3",
+    "next": "16.1.1",
     "ox": "^0.9.8",
     "react": "19.2.0",
     "react-dom": "19.2.0",

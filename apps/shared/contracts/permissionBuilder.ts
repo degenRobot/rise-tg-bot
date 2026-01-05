@@ -142,8 +142,6 @@ export class PermissionBuilder {
     return this
       .addProtocolFunction("uniswap", "router", "swapExactTokensForTokens", "Swap Tokens (Uniswap)");
       // NOTE: addLiquidity and removeLiquidity cause VerificationError on fresh wallets
-      // Porto has an undocumented limit - only 7 call permissions work on fresh wallets
-      // Keep this matching wallet-demo's exact permission structure
   }
   
   // Build the final permissions object
